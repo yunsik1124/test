@@ -8,7 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <style>
+    <!-- ✅ 이미지 프리로드 (방법1) -->
+  <link rel="preload" as="image" href="images/yellow.png">
+  <link rel="preload" as="image" href="images/blue.png">
+  <link rel="preload" as="image" href="images/red.png">
+  <link rel="preload" as="image" href="images/bomb.png">
+  <link rel="preload" as="image" href="images/hp.png">
+  <link rel="preload" as="image" href="images/levelup.png">
+<style>
     :root {
       --bg: #0a0c16;
       --panel: #101425;
@@ -202,6 +209,17 @@
   </div>
 
 <script>
+  /* ✅ 이미지 미리 로드 (방법2) */
+  const preloadImgs = [
+    "images/yellow.png",
+    "images/blue.png",
+    "images/red.png",
+    "images/bomb.png",
+    "images/hp.png",
+    "images/levelup.png"
+  ];
+  preloadImgs.forEach(src => { const img = new Image(); img.src = src; });
+
   (()=>{
 
     const app = document.getElementById('app');

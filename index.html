@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>두더지 게임 – 모바일 세로형 (이미지 스프라이트)</title>
+  <!-- Pixel font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c16;
+      --panel: #101425;
+      --accent: #7c9cff;
+      --accent-2: #43d19e;
+      --text: #e7eaf6;
+      --muted: #96a0c3;
+      --gold: #ffd84d;
+      --red: #ff5b5b;
+      --hole: #0b0f20;
+      --px: 4px; /* pixel border */
+      --tile-dirt: url('https://opengameart.org/sites/default/files/dirt_13.png');
+      --tile-grass: url('https://opengameart.org/sites/default/files/grass_47.png');
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent }
+    html, body { height: 100% }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Helvetica, Arial;
+      color: var(--text);
+      background: #0a0c16;
+      display: grid; place-items: center;
+      overflow: hidden;
+    }
+
+    .app { width: 360px; height: 640px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; padding: 6px; position: relative; image-rendering: pixelated; }
+    .panel { background: var(--panel); border-radius: 0; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding: 6px; }
+
+    header h1 { font-family: 'Press Start 2P', ui-sans-serif; font-size: 12px; margin: 0 0 4px 0; text-align: center; letter-spacing: 1px; }
+
+    /* 트로피 게이지 */
+    .trophy { display:flex; align-items:center; justify-content:center; gap:8px; }
+    .trophy-icon { font-size: 18px; filter: drop-shadow(0 1px 0 #000); }
+    .trophy-track { position: relative; width: 72%; height: 12px; background:#0f1430; border:var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; }
+    .trophy-fill { position:absolute; inset:0; width:0%; background: linear-gradient(90deg, #ffcf33, #ffd84d, #fff2a6); transition: width .2s ease }
+    .trophy-label { font-size: 10px; color: var(--muted); text-align:center; margin-top:6px; font-family: 'Press Start 2P', ui-sans-serif; }
+
+    /* 타임어택 게이지 */
+    .gauge { position: relative; height: 16px; border-radius: 0; background: #0f1430; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; }
+    .gauge .bar { width: 100%; height: 100%; transform-origin: left center; transform: scaleX(1); transition: transform .12s linear, background .2s linear; background: linear-gradient(90deg, #38d39f, #7c9cff 40%, #ffd84d 70%); }
+
+    .board.panel { padding: 6px; background: var(--tile-grass) repeat; background-size: 16px 16px; }
+    .boardGrid { width: 100%; aspect-ratio: 1/1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; }
+    .hole { aspect-ratio: 1/1; position: relative; background: var(--tile-dirt) repeat; background-size: 16px 16px; border: var(--px) solid #1a203c; box-shadow: 0 0 0 calc(var(--px)) #000 inset; overflow: hidden; }
+
+    /* 이미지 스프라이트 두더지 */
+    .mole {
+      width: 82%; height: 82%; position: absolute; left: 50%; bottom: 0;
+      transform: translateX(-50%) translateY(100%);
+      opacity: 0; display: block;
+      transition: transform .3s ease, opacity .3s; /* 0.3s로 통일 */
+      background-repeat:no-repeat; background-position:center; background-size: 90% 90%; image-rendering: pixelated;
+      /* ⬇ 테두리/내부 그림자 제거 (요청) */
+      border: none;
+      box-shadow: none;
+    }
+    .mole.up { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    .mole[data-type="yellow"] { background-image:url('images/yellow.png'); }
+    .mole[data-type="blue"]   { background-image:url('images/blue.png'); }
+    .mole[data-type="red"]    { background-image:url('images/red.png'); }
+    .mole[data-type="mine"]   { background-image:url('images/bomb.png'); }
+    .mole[data-type="mine"] .mineText { position:absolute; bottom: 8%; left:50%; transform: translateX(-50%); font-weight:900; font-size: 18px; color:#fff; font-family: 'Press Start 2P', ui-sans-serif; text-shadow: 0 1px 0 #000 }
+
+    .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: #fff; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P', ui-sans-serif; }
+    @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%,-12px) scale(.85) } 30% { opacity: 1; transform: translate(-50%,-26px) scale(1.1) } 70% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%,-42px) scale(1) } }
+
+    .shake { animation: shake .3s both; }
+    @keyframes shake { 10%,90%{transform:translate3d(-2px,0,0)}20%,80%{transform:translate3d(4px,0,0)}30%,50%,70%{transform:translate3d(-8px,0,0)}40%,60%{transform:translate3d(8px,0,0)} }
+
+    /* 카운트다운 오버레이 */
+    .overlay { position:absolute; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.65); color:#fff; z-index: 70; }
+    .overlay.hidden { display:none; }
+    .count-num { font-size: 40px; font-weight: 900; text-shadow: 0 6px 24px rgba(0,0,0,.6); font-family: 'Press Start 2P', ui-sans-serif; }
+
+    /* 레벨 경고 오버레이 */
+    .warn { position:absolute; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.0); z-index: 75; pointer-events:none }
+    .warn.hidden { display:none }
+    .warn .txt { font-family: 'Press Start 2P', ui-sans-serif; font-size: 28px; color:#ff3333; text-shadow:0 0 8px rgba(255,0,0,.6), 0 2px 0 #000; animation: pulse 0.5s ease-in-out infinite alternate }
+    @keyframes pulse { from{ transform: scale(0.98)} to{ transform: scale(1.04)} }
+
+    /* 결과 팝업 */
+    .modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5,7,15,.55); backdrop-filter: blur(2px); transition: opacity .18s ease; z-index: 80 }
+    .modal.hidden { opacity: 0; pointer-events: none }
+    .modal-card { width: min(460px, 92vw); display: grid; gap: 10px }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+    .badge { background: #0e1328; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding: 8px 12px; display: grid; gap: 2px }
+    .badge .label { color: var(--muted); font-size: 10px; font-family: 'Press Start 2P', ui-sans-serif; }
+    .badge .value { font-variant-numeric: tabular-nums; font-weight: 800; font-family: 'Press Start 2P', ui-sans-serif; }
+    .actions { display: grid; grid-auto-flow: column; gap: 8px; justify-content: end }
+
+    .controls.panel { display:flex; gap:6px; align-items:center; justify-content:center }
+    .controls select, .controls button, .controls label { font-family: 'Press Start 2P', ui-sans-serif; font-size: 10px }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="panel">
+      <h1>두더지 게임</h1>
+      <div class="trophy">
+        <div class="trophy-icon" aria-hidden="true">🏆</div>
+        <div class="trophy-track"><div class="trophy-fill" id="trophyFill"></div></div>
+      </div>
+      <div class="trophy-label" id="trophyLabel">Lv.1 · 새싹 연습생</div>
+    </header>
+
+    <section class="panel">
+      <div class="gauge"><div class="bar" id="gaugeBar"></div></div>
+    </section>
+
+    <main class="board panel">
+      <div id="board" class="boardGrid"></div>
+    </main>
+
+    <section class="controls panel">
+      <label for="difficulty">난이도</label>
+      <select id="difficulty">
+        <option value="easy">쉬움</option>
+        <option value="normal" selected>보통</option>
+        <option value="hard">어려움</option>
+      </select>
+      <button id="start">시작</button>
+      <button id="reset" disabled>리셋</button>
+      <button id="mute">🔊</button>
+    </section>
+
+    <!-- 카운트다운 오버레이 -->
+    <div id="countdown" class="overlay hidden"><div class="count-num" id="countNum">3</div></div>
+    <!-- 레벨 경고 오버레이 -->
+    <div id="warning" class="warn hidden"><div class="txt">WARNING!</div></div>
+  </div>
+
+  <!-- 결과 팝업 -->
+  <div id="result" class="modal hidden" aria-modal="true" role="dialog" aria-labelledby="resultTitle">
+    <div class="modal-card panel">
+      <h2 id="resultTitle" style="font-family:'Press Start 2P', ui-sans-serif; font-size:14px; margin:6px 0 0;">결과</h2>
+      <div class="summary">
+        <div class="badge"><span class="label">최종 점수</span><span class="value" id="resScore">0</span></div>
+        <div class="badge"><span class="label">명예</span><span class="value" id="resHonor">Lv.1 · 새싹 연습생</span></div>
+      </div>
+      <div class="actions">
+        <button id="again" class="primary">다시하기</button>
+        <button id="closeRes" class="ghost">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (()=>{
+
+    const app = document.getElementById('app');
+    const board = document.getElementById('board');
+    const gaugeBar = document.getElementById('gaugeBar');
+    const startBtn = document.getElementById('start');
+    const resetBtn = document.getElementById('reset');
+    const diffSel = document.getElementById('difficulty');
+    const muteBtn = document.getElementById('mute');
+
+    const trophyFill = document.getElementById('trophyFill');
+    const trophyLabel = document.getElementById('trophyLabel');
+
+    const resModal = document.getElementById('result');
+    const resScore = document.getElementById('resScore');
+    const resHonor = document.getElementById('resHonor');
+    const againBtn = document.getElementById('again');
+    const closeResBtn = document.getElementById('closeRes');
+
+    const cd = document.getElementById('countdown');
+    const cdNum = document.getElementById('countNum');
+    const warn = document.getElementById('warning');
+
+    const HOLES=9, ROWS=3, COLS=3;
+    const typeCfg={yellow:{up:1100},blue:{up:750},red:{up:480},mine:{up:900}};
+    const baseGain={yellow:8,blue:11,red:15};
+    const typePoints={yellow:1,blue:2,red:3};
+
+    const normalTypes=['yellow','blue','blue','red'];
+
+    // 50단계 명예 (최대 5000)
+    const HONOR_LEVELS = 50;
+    function honorThreshold(i){ if(i<=1) return 0; if(i>=HONOR_LEVELS) return 5000; const t=(i-1)/(HONOR_LEVELS-1); return Math.round(5000*Math.pow(t,1.7)); }
+    const HONOR_NAMES = [
+      '새싹 연습생','초보 달성!','솜씨가 느는 중','입문 헌터','손 빠른 초보',
+      '두더지 스카우트','숙련자','고수 등극!','반응속도 달인','연타 장인',
+      '달빛 헌터','황금 망치','전설의 길목','폭풍 손놀림','초광속 사냥꾼',
+      '궁극의 헌터','명예의 전당','두더지 마스터','신화의 사냥꾼','전설 재림',
+      '일격 필살','콤보 폭격수','해머 장군','지하 제왕','굴착 명인',
+      '메트로 놀라움','섬광 반사 신경','그랜드 헌터','슈퍼 노하우','금빛 번개',
+      '초월의 손놀림','별의 사냥꾼','궁극 반응왕','극의 境地','도사 경지',
+      '초신속 헌터','폭풍 마스터','영웅의 귀환','무쌍의 전설','절대자',
+      '천상계 입문','성좌의 수호자','끝판 대장','우주적 속도','차원의 파수꾼',
+      '신성의 채찍','영겁의 헌터','창세기의 망치','우주의 지배자','두더지계의 신!'
+    ];
+
+    function getHonor(score){
+      let level=1; for(let i=HONOR_LEVELS;i>=1;i--){ if(score>=honorThreshold(i)){ level=i; break; } }
+      const name=HONOR_NAMES[level-1]||HONOR_NAMES[HONOR_NAMES.length-1];
+      const prev=honorThreshold(level); const next=honorThreshold(Math.min(level+1,HONOR_LEVELS));
+      const progress= level>=HONOR_LEVELS?1:Math.max(0,Math.min(1,(score-prev)/Math.max(1,next-prev)));
+      return {level,name,progress};
+    }
+
+    // ===== Difficulty scaling by Honor =====
+    function paramsFromLevel(level){
+      const s = (level-1)/(HONOR_LEVELS-1); // 0..1
+      return {
+        drainMult: 1 + 1.0*s,           // 게이지 소모 1x → 2x
+        gainMultHonor: Math.max(0.35, 1 - 0.6*s), // 회복량 1x → 0.4x (최소 0.35x)
+        spawnInterval: 1000 - 800*s,     // 1000ms → 200ms
+        maxActive: (s < 0.3 ? 1 : (s < 0.65 ? 2 : 3)) // Lv1~15:1, Lv16~33:2, 이후:3
+      };
+    }
+
+    // state
+    let isPlaying=false, isCounting=false, score=0, gauge=100, combo=0, maxCombo=0, lastHit=0, lastActionAt=0;
+    let active=new Set();
+    let upMap=new Map(); // idx -> {to, type, missed}
+    let tickTimer, spawnTimeout;
+    let muted=false, audioCtx;
+    let prevLevel=1, boostUntilLevel=0; // 경고 부스트 범위
+
+    // ===== Audio (합성) =====
+    function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+    function ping(f=600,d=0.06,t='sine',v=0.3){ if(muted)return; createCtx(); const now=audioCtx.currentTime; const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.type=t; o.frequency.setValueAtTime(f,now); g.gain.setValueAtTime(0.0001,now); g.gain.exponentialRampToValueAtTime(v,now+0.01); g.gain.exponentialRampToValueAtTime(0.0001,now+d); o.connect(g).connect(audioCtx.destination); o.start(now); o.stop(now+d+0.02); }
+    function hitChime(){ if(muted)return; createCtx(); [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
+    function buzzStrong(){ if(muted)return; createCtx(); [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
+    function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
+
+    // 카운트다운 효과음
+    function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
+    function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
+
+    // BGM (루프)
+    let bgmTimer=null; function startBgm(){ if(muted) return; createCtx(); stopBgm(); const pattern=[440,554,659,554,440,440,554,659,740,659,554,494]; let i=0; bgmTimer=setInterval(()=>{ ping(pattern[i%pattern.length],0.14,'triangle',0.22); i++; },180);} function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
+
+    // 엔딩: 명예에 따른 군중 사운드
+    function noiseBurst(dur=0.15, vol=0.35){ if(muted)return; createCtx(); const sr=audioCtx.sampleRate; const len=Math.floor(sr*dur); const buf=audioCtx.createBuffer(1,len,sr); const data=buf.getChannelData(0); for(let i=0;i<len;i++){ data[i]=(Math.random()*2-1)*Math.pow(1-i/len,2); } const src=audioCtx.createBufferSource(); const g=audioCtx.createGain(); g.gain.value=vol; src.buffer=buf; src.connect(g).connect(audioCtx.destination); src.start(); }
+    function playCrowd(level){ if(muted)return; if(level<10){ [180,140,100].forEach((f,i)=> setTimeout(()=> ping(f,0.25,'sawtooth',0.6), i*160)); setTimeout(()=> noiseBurst(0.25,0.4), 60); } else if(level<30){ for(let i=0;i<12;i++){ setTimeout(()=> noiseBurst(0.08,0.32), 60*i); } } else { [660,880,990,1320].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*70)); for(let i=0;i<20;i++){ setTimeout(()=> noiseBurst(0.08,0.35), 40*i); } } }
+
+    function updateTrophy(){ const h=getHonor(score); trophyFill.style.width=`${Math.round(h.progress*100)}%`; trophyLabel.textContent=`Lv.${h.level} · ${h.name}`; }
+
+    function updateGaugeColor(){ if(gauge<50){ const t=1-(gauge/50); const light=56-28*t; gaugeBar.style.background=`hsl(0 100% ${light}%)`; } else { gaugeBar.style.background=''; } }
+
+    function setGauge(v){ gauge=Math.max(0,Math.min(100,v)); gaugeBar.style.transform=`scaleX(${gauge/100})`; updateGaugeColor(); if(gauge<=0) endGame(); }
+
+    // ===== Board & Spawn =====
+    for(let i=0;i<HOLES;i++){ const hole=document.createElement('div'); hole.className='hole'; const mole=document.createElement('div'); mole.className='mole'; mole.dataset.idx=i; hole.appendChild(mole); board.appendChild(hole); }
+    const holes=[...document.querySelectorAll('.hole')];
+
+    const idxToRC = (i)=>({ r: Math.floor(i/COLS), c: i%COLS });
+    function isAdjacentToActive(idx){ const {r,c}=idxToRC(idx); for(const a of active){ const {r:ar,c:ac}=idxToRC(a); if(Math.abs(r-ar)<=1 && Math.abs(c-ac)<=1) return true; } return false; }
+
+    function spawnOne(){ if(!isPlaying)return; const free=[]; for(let i=0;i<HOLES;i++) if(!active.has(i)) free.push(i); if(!free.length) return; // 인접 금지 우선
+      let candidates=free.filter(i=>!isAdjacentToActive(i)); if(!candidates.length) candidates=free; const idx=candidates[Math.floor(Math.random()*candidates.length)];
+      const mole=holes[idx].firstChild; const isMine=Math.random()<0.1; const tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
+      active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
+      if(tkey==='mine' && !mole.querySelector('.mineText')){ const tag=document.createElement('div'); tag.className='mineText'; tag.textContent='지뢰'; mole.appendChild(tag); }
+      const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
+      upMap.set(idx,{to, type:tkey, missed:true});
+    }
+
+    function spawnLoop(){ if(!isPlaying) return; const {level}=getHonor(score); const p=paramsFromLevel(level); let maxActive=p.maxActive; let interval=Math.max(150, Math.floor(p.spawnInterval));
+      if(level < boostUntilLevel){ interval = Math.max(80, Math.floor(interval/3)); maxActive = Math.min(4, maxActive+1); }
+      const need=Math.max(0, maxActive - active.size); for(let n=0;n<need;n++) spawnOne(); spawnTimeout=setTimeout(spawnLoop, interval); }
+
+    // ★ 수정: 완전히 내려간 뒤에만 miss() 처리 (transitionend)
+    function hide(idx, auto=false){
+      const mole=holes[idx].firstChild;
+      const entry=upMap.get(idx);
+      if(entry){ clearTimeout(entry.to); }
+
+      mole.classList.remove('up');         // 내려가기 시작 (애니메이션)
+      active.delete(idx);
+
+      const mineText=mole.querySelector('.mineText'); if(mineText) mineText.remove();
+
+      if(auto && entry && entry.missed && entry.type!=='mine'){
+        const onEnd=(ev)=>{
+          // transform/opacity 중 하나만 와도 한 번만 처리
+          mole.removeEventListener('transitionend', onEnd);
+          miss();
+          if(entry) upMap.delete(idx);
+        };
+        mole.addEventListener('transitionend', onEnd, {once:true});
+      } else {
+        if(entry) upMap.delete(idx);
+      }
+    }
+
+    // ===== Hits & Misses =====
+    function showComboToast(mole,combo){ if(combo<2)return; const r=mole.getBoundingClientRect(); const div=document.createElement('div'); div.className='comboToast'; div.textContent=`x${combo} COMBO!`; div.style.left=(r.left+r.width/2)+'px'; div.style.top=(r.top)+'px'; document.body.appendChild(div); setTimeout(()=>div.remove(),620); }
+
+    function afterLevelCheck(){ const h=getHonor(score); if(h.level>prevLevel){ for(let lv=prevLevel+1; lv<=h.level; lv++){ 
+          // 변경: 10단계 → 5단계마다
+          if(lv%5===0){ triggerWarning(lv); } 
+        } prevLevel=h.level; } updateTrophy(); }
+
+    function hitNormal(idx,mole){ const now=performance.now(); const d={comboWindow:1400, comboStep:0.10, gainMult:1}; if(now-lastHit<=d.comboWindow) combo++; else combo=1; lastHit=now; lastActionAt=now; maxCombo=Math.max(maxCombo,combo); const tkey=mole.dataset.type; const honor=paramsFromLevel(getHonor(score).level); const gain=baseGain[tkey]*d.gainMult*honor.gainMultHonor*(1+Math.max(0,combo-1)*d.comboStep); const pts=typePoints[tkey]; score+=pts; setGauge(gauge+gain);
+      const entry=upMap.get(idx); if(entry) entry.missed=false; // 타임아웃 미스 방지
+      afterLevelCheck();
+      hitChime(); showComboToast(mole,combo); hide(idx); }
+
+    function hitMine(idx,mole){ const now=performance.now(); lastActionAt=now; combo=0; setGauge(gauge-35); const entry=upMap.get(idx); if(entry) entry.missed=false; app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300); mineBlast(); hide(idx); }
+
+    function miss(){ const now=performance.now(); lastActionAt=now; setGauge(gauge-22); combo=0; app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300); buzzStrong(); }
+
+    // ★ 수정: 판정 - hole 전체 클릭 허용
+    board.addEventListener('pointerdown',e=>{ 
+      if(!isPlaying)return; 
+      const hole=e.target.closest('.hole'); 
+      if(!hole) return; 
+      const mole=hole.firstChild; 
+      if(mole&&mole.classList.contains('up')){ 
+        const idx=Number(mole.dataset.idx); 
+        if(mole.dataset.type==='mine') hitMine(idx,mole); 
+        else hitNormal(idx,mole); 
+      } else miss(); 
+    });
+
+    // ===== 카운트다운 & Flow =====
+    function beginCountdown(cb){ if(isCounting) return; isCounting=true; cd.classList.remove('hidden'); let n=3; cdNum.textContent=String(n); countdownBeep(n); const countdownTimer=setInterval(()=>{ n--; if(n>0){ cdNum.textContent=String(n); countdownBeep(n); } else { cdNum.textContent='START!'; countdownStart(); setTimeout(()=>{ cd.classList.add('hidden'); isCounting=false; cb(); }, 350); clearInterval(countdownTimer); } }, 1000); }
+
+    // ★ 수정: WARNING - 5레벨마다 + 1레벨만 부스트, 사운드 파일 재생
+    function triggerWarning(level){ 
+      warn.classList.remove('hidden'); 
+      setTimeout(()=> warn.classList.add('hidden'), 2000); 
+      boostUntilLevel = level + 1;        // 현재 레벨에서만 유효
+      if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} } // 파일 재생
+    }
+
+    function start(){ if(isPlaying||isCounting) return; hideResult(); beginCountdown(realStart); }
+
+    function realStart(){ isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100; prevLevel=getHonor(score).level; boostUntilLevel=0; updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
+      const dt=0.1; tickTimer=setInterval(()=>{ const now=performance.now(); const honor=paramsFromLevel(getHonor(score).level); let drain=8; if(active.size===0) drain=14; else if(now-lastActionAt>2500) drain=10; drain*=honor.drainMult; setGauge(gauge - drain*dt); }, dt*1000);
+      spawnLoop(); // 동적 간격으로 스폰
+      startBtn.disabled=true; resetBtn.disabled=false; diffSel.disabled=true;
+    }
+
+    function endGame(){ if(!isPlaying) return; isPlaying=false; clearInterval(tickTimer); if(spawnTimeout) clearTimeout(spawnTimeout); upMap.forEach(e=>clearTimeout(e.to)); upMap.clear(); active.clear(); stopBgm(); showResult(); }
+
+    function reset(){ if(isCounting){ cd.classList.add('hidden'); isCounting=false; } endGame(); gauge=100; score=0; combo=0; maxCombo=0; updateTrophy(); updateGaugeColor(); startBtn.disabled=false; resetBtn.disabled=true; diffSel.disabled=false; }
+
+    // ★ 수정: 결과 팝업 시 fail.wav 1회 재생
+    function showResult(){ 
+      const h=getHonor(score); 
+      resScore.textContent=String(score); 
+      resHonor.textContent=`Lv.${h.level} · ${h.name}`; 
+      resModal.classList.remove('hidden'); 
+      playCrowd(h.level); 
+      if(!muted){ try{ new Audio('sound/fail.wav').play(); }catch(e){} } 
+    }
+    function hideResult(){ resModal.classList.add('hidden'); }
+
+    startBtn.addEventListener('click', start);
+    againBtn?.addEventListener('click', ()=>{ hideResult(); start(); });
+    closeResBtn?.addEventListener('click', hideResult);
+    muteBtn.addEventListener('click',()=>{ const m=(window._muted=!window._muted); muted=m; muteBtn.textContent=m?'🔇':'🔊'; if(m) stopBgm(); else if(isPlaying) startBgm(); });
+  })();
+  </script>
+</body>
+</html>

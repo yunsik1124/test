@@ -35,7 +35,8 @@
       overflow: hidden;
     }
 
-    .app { width: 360px; height: 360px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 0px; padding: 6px; position: relative; image-rendering: pixelated; }
+    /* ⬇ 패딩을 변수로 빼서 오버레이가 정확히 덮도록 사용 */
+    .app { --pad: 6px; width: 360px; height: 360px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 0px; padding: var(--pad); position: relative; image-rendering: pixelated; }
     .panel { background: var(--panel); border-radius: 0; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding: 6px; }
 
     header h1 { font-family: 'Press Start 2P', ui-sans-serif; font-size: 12px; margin: 0 0 4px 0; text-align: center; letter-spacing: 1px; }
@@ -81,12 +82,22 @@
     @keyframes shake { 10%,90%{transform:translate3d(-2px,0,0)}20%,80%{transform:translate3d(4px,0,0)}30%,50%,70%{transform:translate3d(-8px,0,0)}40%,60%{transform:translate3d(8px,0,0)} }
 
     /* 카운트다운 오버레이 */
-    .overlay { position:absolute; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.65); color:#fff; z-index: 70; }
+    .overlay {
+      position:absolute;
+      /* ⬇ 패딩만큼 확장해서 완전 덮기 */
+      inset: calc(-1 * var(--pad));
+      display:grid; place-items:center; background: rgba(0,0,0,.65); color:#fff; z-index: 70;
+    }
     .overlay.hidden { display:none; }
     .count-num { font-size: 40px; font-weight: 900; text-shadow: 0 6px 24px rgba(0,0,0,.6); font-family: 'Press Start 2P', ui-sans-serif; }
 
     /* 레벨 경고 오버레이 */
-    .warn { position:absolute; inset:0; display:grid; place-items:center; background: rgba(0,0,0,.0); z-index: 75; pointer-events:none }
+    .warn {
+      position:absolute;
+      /* ⬇ 동일하게 완전 덮기 */
+      inset: calc(-1 * var(--pad));
+      display:grid; place-items:center; background: rgba(0,0,0,.0); z-index: 75; pointer-events:none
+    }
     .warn.hidden { display:none }
     .warn .txt { font-family: 'Press Start 2P', ui-sans-serif; font-size: 28px; color:#ff3333; text-shadow:0 0 8px rgba(255,0,0,.6), 0 2px 0 #000; animation: pulse 0.5s ease-in-out infinite alternate }
     @keyframes pulse { from{ transform: scale(0.98)} to{ transform: scale(1.04)} }
@@ -340,17 +351,32 @@
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} } // 파일 재생
     }
 
-    function start(){ if(isPlaying||isCounting) return; hideResult(); beginCountdown(realStart); }
+    function start(){ 
+      if(isPlaying||isCounting) return; 
+      // ★ 수정: 카운트다운 중에도 리셋 가능하도록 시작 즉시 활성화
+      resetBtn.disabled=false;
+      beginCountdown(realStart); 
+    }
 
     function realStart(){ isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100; prevLevel=getHonor(score).level; boostUntilLevel=0; updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
       const dt=0.1; tickTimer=setInterval(()=>{ const now=performance.now(); const honor=paramsFromLevel(getHonor(score).level); let drain=8; if(active.size===0) drain=14; else if(now-lastActionAt>2500) drain=10; drain*=honor.drainMult; setGauge(gauge - drain*dt); }, dt*1000);
       spawnLoop(); // 동적 간격으로 스폰
-      startBtn.disabled=true; resetBtn.disabled=false; diffSel.disabled=true;
+      startBtn.disabled=true; diffSel.disabled=true;
+      // 리셋은 플레이 중에도 유지
+      resetBtn.disabled=false;
     }
 
     function endGame(){ if(!isPlaying) return; isPlaying=false; clearInterval(tickTimer); if(spawnTimeout) clearTimeout(spawnTimeout); upMap.forEach(e=>clearTimeout(e.to)); upMap.clear(); active.clear(); stopBgm(); showResult(); }
 
-    function reset(){ if(isCounting){ cd.classList.add('hidden'); isCounting=false; } endGame(); gauge=100; score=0; combo=0; maxCombo=0; updateTrophy(); updateGaugeColor(); startBtn.disabled=false; resetBtn.disabled=true; diffSel.disabled=false; }
+    function reset(){ 
+      // 카운트다운 중이면 취소
+      if(isCounting){ cd.classList.add('hidden'); isCounting=false; }
+      endGame(); 
+      gauge=100; score=0; combo=0; maxCombo=0; updateTrophy(); updateGaugeColor(); 
+      startBtn.disabled=false; diffSel.disabled=false; 
+      // 리셋 누른 직후에도 다시 리셋 가능하도록 유지
+      resetBtn.disabled=false; 
+    }
 
     // ★ 수정: 결과 팝업 시 fail.wav 1회 재생
     function showResult(){ 
@@ -364,6 +390,8 @@
     function hideResult(){ resModal.classList.add('hidden'); }
 
     startBtn.addEventListener('click', start);
+    // ★ 수정: 리셋 버튼 바인딩 추가
+    resetBtn.addEventListener('click', reset);
     againBtn?.addEventListener('click', ()=>{ hideResult(); start(); });
     closeResBtn?.addEventListener('click', hideResult);
     muteBtn.addEventListener('click',()=>{ const m=(window._muted=!window._muted); muted=m; muteBtn.textContent=m?'🔇':'🔊'; if(m) stopBgm(); else if(isPlaying) startBgm(); });

@@ -41,7 +41,7 @@
     /* 게임 화면 */
     .app {
       --pad: 6px;
-      --y-offset: -200px; /* 화면을 위로 200px */
+      --y-offset: -100px; /* 화면을 위로 100px */
       width: 360px;
       height: 360px;
       display: grid;
@@ -90,12 +90,16 @@
     .mole[data-type="blue"]   { background-image:url('images/blue.png'); }
     .mole[data-type="red"]    { background-image:url('images/red.png'); }
     .mole[data-type="mine"]   { background-image:url('images/bomb.png'); }
-    .mole[data-type="mine"] .mineText {
+    .mole[data-type="hp"]     { background-image:url('images/hp.png'); }
+    .mole[data-type="levelup"]{ background-image:url('images/levelup.png'); }
+
+    .mole .labelText {
       position:absolute; bottom: 8%; left:50%;
       transform: translateX(-50%);
-      font-weight:900; font-size: 18px; color:#fff;
+      font-weight:900; font-size: 14px; color:#fff;
       font-family: 'Press Start 2P', ui-sans-serif;
       text-shadow: 0 1px 0 #000;
+      pointer-events: none;
     }
 
     /* 콤보 */
@@ -197,8 +201,7 @@
     </div>
   </div>
 
-
-  <script>
+<script>
   (()=>{
 
     const app = document.getElementById('app');
@@ -223,13 +226,13 @@
     const warn = document.getElementById('warning');
 
     const HOLES=9, ROWS=3, COLS=3;
-    const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900}};
+    const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
     const baseGain={yellow:8,blue:11,red:15};
-    const typePoints={yellow:1,blue:2,red:3};
+    const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
     const normalTypes=['yellow','blue','blue','red'];
 
-    // 지뢰 등장 확률(상향)
-    const MINE_RATE = 0.22; // 22%
+    // 지뢰 등장 확률
+    const MINE_RATE = 0.22;
 
     // 50단계 명예 (최대 5000)
     const HONOR_LEVELS = 50;
@@ -261,23 +264,21 @@
       const prev=honorThreshold(level);
       const next=honorThreshold(Math.min(level+1,HONOR_LEVELS));
       const progress= level>=HONOR_LEVELS?1:Math.max(0,Math.min(1,(score-prev)/Math.max(1,next-prev)));
-      return {level,name,progress};
+      return {level,name,progress, prev, next};
     }
 
-    // 난이도 스케일링 (초반 스폰 속도 상향 + 동시 등장 상향)
+    // 난이도 스케일링
     function paramsFromLevel(level){
       const s = (level-1)/(HONOR_LEVELS-1); // 0..1
-      // 동시 등장수: 1 → 5까지 점진적으로 증가
       const maxActive =
         (s < 0.20) ? 1 :
         (s < 0.45) ? 2 :
         (s < 0.70) ? 3 :
         (s < 0.90) ? 4 : 5;
-
       return {
-        drainMult: 1 + 1.0*s,                      // 게이지 소모 1x → 2x
-        gainMultHonor: Math.max(0.35, 1 - 0.6*s),  // 회복량 1x → 0.4x (최소 0.35x)
-        spawnInterval: 825 - 750*s,                // 초반 조금 더 빠르게
+        drainMult: 1 + 1.0*s,
+        gainMultHonor: Math.max(0.35, 1 - 0.6*s),
+        spawnInterval: 825 - 750*s,
         maxActive
       };
     }
@@ -289,6 +290,9 @@
     let tickTimer=null, spawnTimeout=null, countdownTimer=null;
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
+
+    // 특수 타입(1~5레벨 구간 내 1회 등장) 플래그
+    let spawnedHp=false, spawnedLv=false;
 
     // ===== Audio (합성) =====
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -354,12 +358,13 @@
     }
 
     // ===== 보드 구성 =====
+    const holes=[];
     for(let i=0;i<HOLES;i++){
       const hole=document.createElement('div'); hole.className='hole';
       const mole=document.createElement('div'); mole.className='mole'; mole.dataset.idx=i;
       hole.appendChild(mole); board.appendChild(hole);
+      holes.push(hole);
     }
-    const holes=[...document.querySelectorAll('.hole')];
 
     const idxToRC = (i)=>({ r: Math.floor(i/COLS), c: i%COLS });
     function isAdjacentToActive(idx){
@@ -375,12 +380,31 @@
       let candidates=free.filter(i=>!isAdjacentToActive(i)); if(!candidates.length) candidates=free;
       const idx=candidates[Math.floor(Math.random()*candidates.length)];
       const mole=holes[idx].firstChild;
-      const isMine=Math.random()<MINE_RATE;
-      const tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
-      active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
-      if(tkey==='mine' && !mole.querySelector('.mineText')){
-        const tag=document.createElement('div'); tag.className='mineText'; tag.textContent='지뢰'; mole.appendChild(tag);
+
+      const h=getHonor(score).level;
+
+      // 특수 타입 스폰(레벨 1~5 구간에서 각 1회만)
+      let tkey=null;
+      if(h<=5){
+        if(!spawnedHp && Math.random()<0.05){ tkey='hp'; spawnedHp=true; }
+        else if(!spawnedLv && Math.random()<0.05){ tkey='levelup'; spawnedLv=true; }
       }
+
+      if(!tkey){
+        const isMine=Math.random()<MINE_RATE;
+        tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
+      }
+
+      active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
+
+      // 라벨 텍스트
+      const ensureLabel=()=>{
+        let tag=mole.querySelector('.labelText');
+        if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
+        tag.textContent = (tkey==='mine' ? '지뢰' : tkey==='hp' ? 'HP' : tkey==='levelup' ? 'LEVEL UP!' : '');
+      };
+      ensureLabel();
+
       const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
       upMap.set(idx,{to, type:tkey, missed:true});
     }
@@ -397,14 +421,15 @@
       spawnTimeout=setTimeout(spawnLoop, interval);
     }
 
-    // 완전히 내려간 뒤에만 miss() 처리 (transitionend)
+    // 완전히 내려간 뒤에만 miss() 처리
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
       if(entry){ clearTimeout(entry.to); }
       mole.classList.remove('up');         // 내려가기 시작
       active.delete(idx);
-      const mineText=mole.querySelector('.mineText'); if(mineText) mineText.remove();
+
+      const label=mole.querySelector('.labelText'); if(label) label.remove();
 
       if(auto && entry && entry.missed && entry.type!=='mine'){
         const onEnd=()=>{ mole.removeEventListener('transitionend', onEnd); miss(); if(entry) upMap.delete(idx); };
@@ -412,14 +437,13 @@
       } else { if(entry) upMap.delete(idx); }
     }
 
-    // ===== 콤보 점수 가중치 (레벨 가속) =====
+    // ===== 콤보 점수 가중치 =====
     function comboScoreFactor(c){
-      // 콤보 1이면 1.0배, 이후 타수당 +15%, 최대 2.0배
       const step=0.15, cap=2.0;
       return Math.min(1 + Math.max(0,c-1)*step, cap);
     }
 
-    // ===== 판정/효과 =====
+    // ===== 토스트/이펙트 =====
     function showComboToast(mole,combo){
       if(combo<2)return;
       const r=mole.getBoundingClientRect();
@@ -427,6 +451,54 @@
       div.className='comboToast'; div.textContent=`x${combo} COMBO!`;
       div.style.left=(r.left+r.width/2)+'px'; div.style.top=(r.top)+'px';
       document.body.appendChild(div); setTimeout(()=>div.remove(),620);
+    }
+
+    function showLevelUpText(){
+      // 트로피 라벨 아래에 잠깐 뜨는 연출
+      const rect=trophyLabel.getBoundingClientRect();
+      const el=document.createElement('div');
+      el.textContent='LEVEL UP!';
+      el.style.position='fixed';
+      el.style.left=(rect.left+rect.width/2)+'px';
+      el.style.top=(rect.top-10)+'px';
+      el.style.transform='translate(-50%,0)';
+      el.style.fontFamily="'Press Start 2P', ui-sans-serif";
+      el.style.fontSize='16px';
+      el.style.color='#ffd84d';
+      el.style.textShadow='0 2px 0 #000, 0 0 8px rgba(255,216,77,.7)';
+      el.style.transition='transform .6s ease, opacity .6s ease';
+      el.style.zIndex=120;
+      document.body.appendChild(el);
+      requestAnimationFrame(()=>{ el.style.transform='translate(-50%,-22px)'; el.style.opacity='0'; });
+      setTimeout(()=> el.remove(), 700);
+    }
+
+    function animateFly(mole,target){ // target: 'gauge' | 'trophy'
+      const r=mole.getBoundingClientRect();
+      const ghost=mole.cloneNode(true);
+      // 고스트 스타일
+      ghost.style.position='fixed';
+      ghost.style.left=r.left+'px';
+      ghost.style.top=r.top+'px';
+      ghost.style.width=r.width+'px';
+      ghost.style.height=r.height+'px';
+      ghost.style.transition='all .6s ease';
+      ghost.style.zIndex=200;
+      document.body.appendChild(ghost);
+
+      let dest;
+      if(target==='gauge') dest=gaugeBar.getBoundingClientRect();
+      else dest=trophyFill.getBoundingClientRect();
+
+      // 다음 프레임에 이동
+      requestAnimationFrame(()=>{
+        ghost.style.left=(dest.left)+'px';
+        ghost.style.top=(dest.top)+'px';
+        ghost.style.opacity='0';
+        ghost.style.transform='scale(.4)';
+      });
+
+      setTimeout(()=> ghost.remove(), 620);
     }
 
     function afterLevelCheck(){
@@ -440,6 +512,16 @@
       updateTrophy();
     }
 
+    function bumpOneLevel(){
+      // 현재 레벨 → 다음 레벨 임계치로 점수 보정
+      const h=getHonor(score);
+      const nextLv=Math.min(h.level+1, HONOR_LEVELS);
+      const need=honorThreshold(nextLv);
+      if(score < need) score = need;
+      afterLevelCheck();
+    }
+
+    // ===== 판정/효과 =====
     function hitNormal(idx,mole){
       const now=performance.now();
       const d={comboWindow:1400, comboStep:0.10, gainMult:1};
@@ -453,7 +535,7 @@
       const gain=baseGain[tkey]*d.gainMult*honor.gainMultHonor*(1+Math.max(0,combo-1)*d.comboStep);
       setGauge(gauge+gain);
 
-      // 점수 가중 (레벨 가속)
+      // 점수
       const ptsBase=typePoints[tkey];
       const pts = Math.round(ptsBase * comboScoreFactor(combo));
       score+=pts;
@@ -472,6 +554,27 @@
       mineBlast(); hide(idx);
     }
 
+    function hitHp(idx,mole){
+      const now=performance.now(); lastActionAt=now;
+      if(now-lastHit<=1400) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
+      setGauge(gauge+50); // 50% 회복
+      const entry=upMap.get(idx); if(entry) entry.missed=false;
+      hitChime(); showComboToast(mole,combo);
+      animateFly(mole,'gauge');
+      hide(idx);
+    }
+
+    function hitLevelup(idx,mole){
+      const now=performance.now(); lastActionAt=now;
+      if(now-lastHit<=1400) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
+      const entry=upMap.get(idx); if(entry) entry.missed=false;
+      hitChime(); showComboToast(mole,combo);
+      animateFly(mole,'trophy');
+      bumpOneLevel(); // 레벨 1 상승
+      showLevelUpText();
+      hide(idx);
+    }
+
     function miss(){
       const now=performance.now(); lastActionAt=now;
       setGauge(gauge-22); combo=0;
@@ -486,8 +589,11 @@
       const mole=hole.firstChild;
       if(mole&&mole.classList.contains('up')){
         const idx=Number(mole.dataset.idx);
-        if(mole.dataset.type==='mine') hitMine(idx,mole);
-        else hitNormal(idx,mole);
+        const t=mole.dataset.type;
+        if(t==='mine')       hitMine(idx,mole);
+        else if(t==='hp')    hitHp(idx,mole);
+        else if(t==='levelup') hitLevelup(idx,mole);
+        else                 hitNormal(idx,mole);
       } else miss();
     });
 
@@ -520,6 +626,9 @@
     function realStart(){
       isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
       prevLevel=getHonor(score).level; boostUntilLevel=0;
+      // 특수 스폰 리셋
+      spawnedHp=false; spawnedLv=false;
+
       updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
 
       const dt=0.1;
@@ -532,9 +641,9 @@
         setGauge(gauge - drain*dt);
       }, dt*1000);
 
-      // 시작 직후 한 마리 즉시 등장 → 체감 속도 향상
+      // 시작 직후 한 마리 즉시
       spawnOne();
-      spawnLoop(); // 동적 간격으로 스폰
+      spawnLoop();
 
       startBtn.disabled=true; diffSel.disabled=true;
       resetBtn.disabled=false;
@@ -542,15 +651,15 @@
 
     function start(){
       if(isPlaying||isCounting) return;
-      resetBtn.disabled=false;        // 시작 중에도 리셋 가능
+      resetBtn.disabled=false;
       beginCountdown(realStart);
     }
 
-    // 화면의 모든 두더지 즉시 제거(가시성 OFF, 텍스트 제거)
+    // 화면의 모든 두더지 제거
     function clearAllMoles(){
       document.querySelectorAll('.mole').forEach(m=>{
         m.classList.remove('up');
-        const t=m.querySelector('.mineText'); if(t) t.remove();
+        const t=m.querySelector('.labelText'); if(t) t.remove();
       });
       active.clear();
       upMap.forEach(e=>{ try{ clearTimeout(e.to); }catch(_){} });
@@ -562,7 +671,6 @@
       isPlaying=false;
       if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
       if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
-      // ⬇ 게임 종료 시 두더지 전부 제거
       clearAllMoles();
       stopBgm(); showResult();
     }
@@ -575,18 +683,18 @@
     }
 
     function reset(){
-      // 카운트다운/게임 모두 강제 중지
       hardClearTimers();
       if(isCounting){ cd.classList.add('hidden'); isCounting=false; }
       if(isPlaying){ stopBgm(); }
       isPlaying=false;
-      // 화면에서 두더지 모두 제거
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
+      spawnedHp=false; spawnedLv=false;
+
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; diffSel.disabled=false;
-      resetBtn.disabled=false; // 계속 리셋 가능
+      resetBtn.disabled=false;
     }
 
     function showResult(){
@@ -609,6 +717,6 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
   })();
-  </script>
+</script>
 </body>
 </html>

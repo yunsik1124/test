@@ -226,10 +226,16 @@
     const warn = document.getElementById('warning');
 
     const HOLES=9, ROWS=3, COLS=3;
+
+    // 타입/포인트/시간 설정
     const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
     const normalTypes=['yellow','blue','blue','red'];
+
+    // === 새 분류: 특수 아이템은 미스 시 콤보 유지 ===
+    const SPECIAL_TYPES = new Set(['mine','hp','levelup']); // 지뢰/회복/레벨업
+    const NORMAL_TYPES  = new Set(['yellow','blue','red']); // 일반 두더지
 
     // 지뢰 등장 확률
     const MINE_RATE = 0.22;
@@ -421,20 +427,39 @@
       spawnTimeout=setTimeout(spawnLoop, interval);
     }
 
-    // 완전히 내려간 뒤에만 miss() 처리
+    // 완전히 내려간 뒤에만 miss() 처리(일반만), 특수는 lastHit 리프레시로 콤보 유지
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
       if(entry){ clearTimeout(entry.to); }
-      mole.classList.remove('up');         // 내려가기 시작
+      mole.classList.remove('up');   // 내려가기 시작
       active.delete(idx);
 
       const label=mole.querySelector('.labelText'); if(label) label.remove();
 
-      if(auto && entry && entry.missed && entry.type!=='mine'){
-        const onEnd=()=>{ mole.removeEventListener('transitionend', onEnd); miss(); if(entry) upMap.delete(idx); };
-        mole.addEventListener('transitionend', onEnd, {once:true});
-      } else { if(entry) upMap.delete(idx); }
+      if (auto && entry && entry.missed) {
+        if (NORMAL_TYPES.has(entry.type)) {
+          // 일반 두더지 자동 미스 → 콤보 끊김
+          const onEnd = () => {
+            mole.removeEventListener('transitionend', onEnd);
+            miss();
+            if (entry) upMap.delete(idx);
+          };
+          mole.addEventListener('transitionend', onEnd, { once: true });
+        } else if (SPECIAL_TYPES.has(entry.type)) {
+          // 특수 아이템 자동 퇴장 → 콤보 유지: 타이머만 갱신
+          const onEnd = () => {
+            mole.removeEventListener('transitionend', onEnd);
+            lastHit = performance.now(); // 👈 콤보 타이머 리프레시
+            if (entry) upMap.delete(idx);
+          };
+          mole.addEventListener('transitionend', onEnd, { once: true });
+        } else {
+          if (entry) upMap.delete(idx);
+        }
+      } else {
+        if (entry) upMap.delete(idx);
+      }
     }
 
     // ===== 콤보 점수 가중치 =====
@@ -476,7 +501,6 @@
     function animateFly(mole,target){ // target: 'gauge' | 'trophy'
       const r=mole.getBoundingClientRect();
       const ghost=mole.cloneNode(true);
-      // 고스트 스타일
       ghost.style.position='fixed';
       ghost.style.left=r.left+'px';
       ghost.style.top=r.top+'px';
@@ -486,14 +510,11 @@
       ghost.style.zIndex=200;
       document.body.appendChild(ghost);
 
-      let dest;
-      if(target==='gauge') dest=gaugeBar.getBoundingClientRect();
-      else dest=trophyFill.getBoundingClientRect();
+      const dest = (target==='gauge') ? gaugeBar.getBoundingClientRect() : trophyFill.getBoundingClientRect();
 
-      // 다음 프레임에 이동
       requestAnimationFrame(()=>{
-        ghost.style.left=(dest.left)+'px';
-        ghost.style.top=(dest.top)+'px';
+        ghost.style.left=dest.left+'px';
+        ghost.style.top=dest.top+'px';
         ghost.style.opacity='0';
         ghost.style.transform='scale(.4)';
       });
@@ -590,10 +611,10 @@
       if(mole&&mole.classList.contains('up')){
         const idx=Number(mole.dataset.idx);
         const t=mole.dataset.type;
-        if(t==='mine')       hitMine(idx,mole);
-        else if(t==='hp')    hitHp(idx,mole);
+        if(t==='mine')         hitMine(idx,mole);
+        else if(t==='hp')      hitHp(idx,mole);
         else if(t==='levelup') hitLevelup(idx,mole);
-        else                 hitNormal(idx,mole);
+        else                   hitNormal(idx,mole);
       } else miss();
     });
 

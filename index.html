@@ -45,6 +45,15 @@
       overflow: hidden;
     }
 
+    /* === [ADD] 상단 로컬 최고 기록 한 줄 (디자인 최소) === */
+    #bestLocal{
+      position: fixed; top: 190px; left: 0; right: 0; z-index: 100;
+      text-align: center; pointer-events: none;
+      font-family: 'Press Start 2P', ui-sans-serif;
+      font-size: 10px; line-height: 1;
+      color: var(--gold); text-shadow: 0 1px 0 #000;
+    }
+
     /* 게임 화면 */
     .app {
       --pad: 6px;
@@ -158,6 +167,12 @@
   </style>
 </head>
 <body>
+  <!-- === [ADD] 상단 로컬 최고 기록 === -->
+  <div id="bestLocal">
+    최고점수: <span id="bestLocalScore">0</span> &nbsp;·&nbsp;
+    최고명예: <span id="bestLocalHonor">Lv.1 · 새싹 연습생</span>
+  </div>
+
   <div class="app" id="app">
     <header class="panel">
       <h1>두더지 게임</h1>
@@ -748,6 +763,7 @@
       resetBtn.disabled=false;
     }
 
+    /* ==== 결과 팝업 ==== */
     function showResult(){
       const h=getHonor(score);
       resScore.textContent=String(score);
@@ -755,9 +771,47 @@
       resModal.classList.remove('hidden');
       playCrowd(h.level);
       if(!muted){ try{ new Audio('sound/fail.wav').play(); }catch(e){} }
+
+      /* === [ADD] 로컬 최고 기록 갱신 === */
+      const bestScoreKey = 'bestScore';
+      const bestHonorLevelKey = 'bestHonorLevel';
+      const bestHonorNameKey  = 'bestHonorName';
+
+      const prevBestScore = parseInt(localStorage.getItem(bestScoreKey) || '0', 10) || 0;
+      const prevBestHonorLv = parseInt(localStorage.getItem(bestHonorLevelKey) || '1', 10) || 1;
+
+      // 점수 최고 갱신
+      if (score > prevBestScore) {
+        localStorage.setItem(bestScoreKey, String(score));
+      }
+      // 명예 최고 갱신(레벨 우선 비교)
+      if (h.level > prevBestHonorLv) {
+        localStorage.setItem(bestHonorLevelKey, String(h.level));
+        localStorage.setItem(bestHonorNameKey, h.name);
+      } else if (h.level === prevBestHonorLv) {
+        // 레벨 같을 때 점수로 타이브레이크
+        if (score > prevBestScore) {
+          localStorage.setItem(bestHonorLevelKey, String(h.level));
+          localStorage.setItem(bestHonorNameKey, h.name);
+        }
+      }
+      renderBestLocal();
     }
     function hideResult(){ resModal.classList.add('hidden'); }
 
+    /* ===== 상단 로컬 최고 기록 표시 ===== */
+    const bestLocalScoreEl = document.getElementById('bestLocalScore');
+    const bestLocalHonorEl = document.getElementById('bestLocalHonor');
+    function renderBestLocal(){
+      const bestScore = parseInt(localStorage.getItem('bestScore') || '0', 10) || 0;
+      const bestHonorLv = parseInt(localStorage.getItem('bestHonorLevel') || '1', 10) || 1;
+      const bestHonorName = localStorage.getItem('bestHonorName') || '새싹 연습생';
+      bestLocalScoreEl.textContent = String(bestScore);
+      bestLocalHonorEl.textContent = `Lv.${bestHonorLv} · ${bestHonorName}`;
+    }
+    renderBestLocal(); // 초기 1회
+
+    /* ==== 이벤트 바인딩 ==== */
     startBtn.addEventListener('click', start);
     resetBtn.addEventListener('click', reset);
     againBtn?.addEventListener('click', ()=>{ hideResult(); start(); });

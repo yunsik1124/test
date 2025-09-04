@@ -173,7 +173,7 @@
     #rankBox .rank-list li { margin: 2px 0; }
     #rankBox .r-name { font-weight: 800; }
     #rankBox .r-score { font-variant-numeric: tabular-nums; }
-    #rankBox .r-honor { color: var(--muted); }
+    #rankBox .r-honor { /* 색상은 JS에서 동적으로 지정 */ }
   </style>
 </head>
 <body>
@@ -197,6 +197,7 @@
         <div class="trophy-icon" aria-hidden="true">🏆</div>
         <div class="trophy-track"><div class="trophy-fill" id="trophyFill"></div></div>
       </div>
+      <!-- 요청대로 트로피 라벨은 색상 유지(미변경) -->
       <div class="trophy-label" id="trophyLabel">Lv.1 · 새싹 연습생</div>
     </header>
 
@@ -303,6 +304,32 @@
     return {level,name,progress, prev, next};
   }
 
+  /* ===== 명예 컬러(10단계) ===== */
+  const HONOR_COLORS = [
+    '#a0a6c8', // 1~5
+    '#6bdc8b', // 6~10
+    '#43d19e', // 11~15
+    '#7c9cff', // 16~20
+    '#a887ff', // 21~25
+    '#ff8bea', // 26~30
+    '#ff9b57', // 31~35
+    '#ffc247', // 36~40
+    '#ffd84d', // 41~45
+    '#ff5b5b'  // 46~50
+  ];
+  function honorColor(level){
+    const idx = Math.min(9, Math.max(0, Math.floor((Number(level||1)-1)/5)));
+    return HONOR_COLORS[idx];
+  }
+  function applyBestHonorColor(){
+    const el = document.getElementById('bestLocalHonor');
+    const txt = el.textContent || '';
+    // 레벨 숫자 추출
+    const m = txt.match(/Lv\.(\d+)/);
+    const lv = m ? parseInt(m[1],10) : 1;
+    el.style.color = honorColor(lv); // 크기/폰트 변경 없이 글자색만
+  }
+
   /* ===== 랭킹 서버 통신 (GAS 호환: 프리플라이트 방지 & 견고한 파싱) ===== */
   const _escape = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   function safeJsonParse(text){ try { return JSON.parse(text); } catch { return null; } }
@@ -355,12 +382,13 @@
         const score = Number(r.score || r.Score || 0);
         const n = _escape(r.name || r.Name || '무명');
         const h = getHonor(score);
+        const col = honorColor(h.level);
         return `<li>
                   <span class="r-name">${n}</span>
                   <span class="r-sep"> — </span>
                   <span class="r-score">${score}</span>
                   <span class="r-dot"> · </span>
-                  <span class="r-honor">Lv.${h.level} · ${h.name}</span>
+                  <span class="r-honor" style="color:${col}">Lv.${h.level} · ${_escape(h.name)}</span>
                 </li>`;
       }).join("");
       box.innerHTML = `
@@ -471,6 +499,7 @@
     function updateTrophy(){
       const h=getHonor(score);
       trophyFill.style.width=`${Math.round(h.progress*100)}%`;
+      // 요청: 트로피 라벨은 색 고정, 텍스트만 갱신
       trophyLabel.textContent=`Lv.${h.level} · ${h.name}`;
     }
     function updateGaugeColor(){
@@ -524,7 +553,7 @@
         tkey = 'levelup'; spawnedLv = true;
       }
       if(!tkey){
-        const isMine=Math.random()<MINE_RATE;
+        const isMine=Math.random()<0.22;
         tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
 
@@ -824,8 +853,12 @@
       const bestHonorName = localStorage.getItem('bestHonorName') || '새싹 연습생';
       bestLocalScoreEl.textContent = String(bestScore);
       bestLocalHonorEl.textContent = `Lv.${bestHonorLv} · ${bestHonorName}`;
+      // ★ 명예 컬러 적용(글자색만)
+      bestLocalHonorEl.style.color = honorColor(bestHonorLv);
     }
     renderBestLocal();
+    // 혹시 외부에서 변경된 경우 대비해서 한 번 더 보정
+    applyBestHonorColor();
 
     // 이벤트
     startBtn.addEventListener('click', start);
@@ -844,4 +877,3 @@
 </script>
 </body>
 </html>
-

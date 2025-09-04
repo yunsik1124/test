@@ -166,13 +166,11 @@
     /* 랭킹 박스 */
     #rankBox { background:#0e1328; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding:8px; max-height:220px; overflow:auto; font-size:10px; text-align:left; }
     #rankBox h4 { margin:0 0 6px 0; color:var(--gold); font-size:10px; font-family:'Press Start 2P'; }
-    #rankBox ol { margin:0; padding-left:18px; }
-#rankBox .rank-list { margin:0; padding-left:18px; list-style: decimal; }
-#rankBox .rank-list li { margin: 2px 0; }
-#rankBox .r-name { font-weight: 800; }
-#rankBox .r-score { font-variant-numeric: tabular-nums; }
-#rankBox .r-honor { color: var(--muted); }
-
+    #rankBox .rank-list { margin:0; padding-left:18px; list-style: decimal; }
+    #rankBox .rank-list li { margin: 2px 0; }
+    #rankBox .r-name { font-weight: 800; }
+    #rankBox .r-score { font-variant-numeric: tabular-nums; }
+    #rankBox .r-honor { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -270,44 +268,63 @@
   updatePlayerNameLabel();
   document.getElementById('resetIdBtn').addEventListener('click', resetPlayerName);
 
-  /* ===== 랭킹 서버 통신 (GAS 호환 수정: 프리플라이트 방지 & 응답 파싱) ===== */
+  /* ===== 랭킹 서버 통신 (GAS 호환: 프리플라이트 방지 & 견고한 파싱) ===== */
   const _escape = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  function safeJsonParse(text){
+    try { return JSON.parse(text); } catch { return null; }
+  }
   async function submitScore(name, score){
     try {
-      // ★ JSON 대신 x-www-form-urlencoded 로 전송하여 preflight(OPTIONS) 회피
+      const ctrl = new AbortController();
+      const t = setTimeout(()=> ctrl.abort(), 7000); // 7초 타임아웃
       const body = new URLSearchParams({ secret: RANK_SECRET, name, score: String(Number(score||0)) });
-      const res  = await fetch(RANK_API, { method: "POST", body });
-      // 서버는 JSON({ok:true...})을 반환하므로 JSON 파싱
-      return await res.json();
+      const res  = await fetch(RANK_API, { method: "POST", body, signal: ctrl.signal });
+      clearTimeout(t);
+      const text = await res.text();
+      const data = safeJsonParse(text) || {};
+      return data;
     } catch(e){ console.error("submitScore 실패", e); return { ok:false, error:String(e) }; }
   }
   async function loadTop(limit=20){
     try {
-      // ★ doGet은 { ok:true, top:[{name,score,...}], count } 구조를 반환(내가 준 GAS 기준)
-      const res = await fetch(`${RANK_API}?type=top&limit=${limit}&v=${Date.now()}`);
-      const data = await res.json();
-      return (data && data.top) || [];
+      const ctrl = new AbortController();
+      const t = setTimeout(()=> ctrl.abort(), 7000);
+      const res = await fetch(`${RANK_API}?type=top&limit=${limit}&v=${Date.now()}`, { signal: ctrl.signal, cache:'no-store' });
+      clearTimeout(t);
+      const text = await res.text();
+      // 서버가 JSON을 반환한다고 가정하되, 혹시 문자열이면 파싱 시도
+      const data = safeJsonParse(text);
+      if (!data) { console.warn("loadTop: JSON 아님/파싱 실패", text); return []; }
+      // 표준 구조: { ok:true, top:[...] }
+      if (Array.isArray(data.top)) return data.top;
+      // 혹시 다른 키로 올 수 있음: { ok:true, rank:[...] } 등
+      if (Array.isArray(data.rank)) return data.rank;
+      if (Array.isArray(data.rows)) return data.rows;
+      return [];
     } catch(e){ console.error("loadTop 실패", e); return []; }
   }
   async function showRanking(finalScore){
     const box = document.getElementById("rankBox");
+    // 기본 렌더
     box.innerHTML = "<h4>TOP20 랭킹</h4><div>불러오는 중...</div>";
     const name = ensurePlayerName();
 
     // 점수 제출(실패해도 진행)
-    try { await submitScore(name, finalScore); } catch(_) {}
+    let postErr = null;
+    try {
+      const res = await submitScore(name, finalScore);
+      if (res && res.ok === false && res.error) postErr = res.error;
+    } catch(e) { postErr = String(e); }
 
     // 랭킹 조회
-    const top = await loadTop(20);
+    let top = [];
+    try { top = await loadTop(20); } catch(e) { console.error(e); }
 
     if (Array.isArray(top) && top.length > 0) {
-      // ※ <ol> 번호(나열차수)만 사용 — 접두사 숫자 제거
-      const items = top.map(r => {
-        const score = Number(r.score || 0);
+      const items = top.map((r) => {
+        const score = Number(r.score || r.Score || 0);
+        const n = _escape(r.name || r.Name || '무명');
         const h = getHonor(score);
-        // r.name XSS 방지
-        const n = _escape(r.name || '무명');
-        // 항목: 닉네임 — 점수  |  명예
         return `<li>
                   <span class="r-name">${n}</span>
                   <span class="r-sep"> — </span>
@@ -316,7 +333,6 @@
                   <span class="r-honor">Lv.${h.level} · ${h.name}</span>
                 </li>`;
       }).join("");
-
       box.innerHTML = `
         <h4>TOP20 랭킹</h4>
         <ol class="rank-list">
@@ -324,10 +340,12 @@
         </ol>
       `;
     } else {
-      box.innerHTML = "<h4>TOP20 랭킹</h4><div>아직 랭킹 데이터가 없어요.</div>";
+      const hint = postErr ? `<br><small style="color:#f88">(${_escape(postErr)})</small>` : "";
+      box.innerHTML = `<h4>TOP20 랭킹</h4><div>랭킹을 불러오지 못했습니다.${hint}</div>`;
     }
   }
-  /* ================== 게임 로직 (원본 그대로) ================== */
+
+  /* ================== 게임 로직 ================== */
   (()=>{ 
     const app = document.getElementById('app');
     const board = document.getElementById('board');
@@ -506,7 +524,7 @@
         tkey = 'levelup'; spawnedLv = true;
       }
       if(!tkey){
-        const isMine=Math.random()<MINE_RATE;
+        const isMine=Math.random()<0.22;
         tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
 
@@ -605,7 +623,7 @@
     }
     function bumpOneLevel(){
       const h=getHonor(score);
-      const nextLv=Math.min(h.level+1, HONOR_LEVELS);
+      const nextLv=Math.min(h.level+1, 50);
       const need=honorThreshold(nextLv);
       if(score < need) score = need;
       afterLevelCheck();
@@ -749,9 +767,10 @@
     }
     function hardClearTimers(){
       if(countdownTimer){ clearInterval(countdownTimer); countdownTimer=null; }
-      if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
-      if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
+      if(tickTimer){ clearInterval(tickTimer); }
+      if(spawnTimeout){ clearTimeout(spawnTimeout); }
       upMap.forEach(e=>clearTimeout(e.to)); upMap.clear();
+      tickTimer=null; spawnTimeout=null;
     }
     function reset(){
       hardClearTimers();

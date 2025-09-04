@@ -85,7 +85,7 @@
     /* 게임 화면 */
     .app {
       --pad: 6px;
-      --y-offset: -80px;
+      --y-offset: -60px;
       width: 360px;
       height: 360px;
       display: grid;
@@ -235,9 +235,10 @@
   ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png"]
     .forEach(src => { const i = new Image(); i.src = src; });
 
-  /* ===== 랭킹 서버 설정 ===== */
-  const RANK_API = "https://script.google.com/macros/s/AKfycbw6i-BlY7zSDAXQ3tDH8_M6Lxm1okJlYNlBCvekMfoCgH6RGws6n__iH6_B2RCqLkNLAQ/exec";
-  const RANK_SECRET = "CHANGE_ME_SECRET"; // ★ Apps Script의 SECRET과 반드시 동일
+  /* ===== 랭킹 서버 설정 (★ 이 두 항목만 프로젝트 값으로 교체) ===== */
+  const RANK_API = "https://script.google.com/macros/s/여기에-너의-최신-EXEC/exec"; // 반드시 /exec
+  const RANK_SECRET = "CHANGE_ME_SECRET"; // ★ Apps Script의 SECRET과 동일
+  /* ================================================================== */
 
   /* ===== 아이디 관리 ===== */
   function updatePlayerNameLabel() {
@@ -263,43 +264,45 @@
   updatePlayerNameLabel();
   document.getElementById('resetIdBtn').addEventListener('click', resetPlayerName);
 
-  /* ===== 서버 통신 ===== */
+  /* ===== 랭킹 서버 통신 (GAS 호환 수정: 프리플라이트 방지 & 응답 파싱) ===== */
+  const _escape = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   async function submitScore(name, score){
     try {
-      const res = await fetch(RANK_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          score: Number(score||0),
-          secret: RANK_SECRET
-        })
-      });
-      return await res.text();
-    } catch(e){ console.error("submitScore 실패", e); }
+      // ★ JSON 대신 x-www-form-urlencoded 로 전송하여 preflight(OPTIONS) 회피
+      const body = new URLSearchParams({ secret: RANK_SECRET, name, score: String(Number(score||0)) });
+      const res  = await fetch(RANK_API, { method: "POST", body });
+      // 서버는 JSON({ok:true...})을 반환하므로 JSON 파싱
+      return await res.json();
+    } catch(e){ console.error("submitScore 실패", e); return { ok:false, error:String(e) }; }
   }
   async function loadTop(limit=20){
     try {
-      const res = await fetch(`${RANK_API}?limit=${limit}`);
-      const text = await res.text();
-      try { return JSON.parse(text); } catch { return []; }
+      // ★ doGet은 { ok:true, top:[{name,score,...}], count } 구조를 반환(내가 준 GAS 기준)
+      const res = await fetch(`${RANK_API}?type=top&limit=${limit}&v=${Date.now()}`);
+      const data = await res.json();
+      return (data && data.top) || [];
     } catch(e){ console.error("loadTop 실패", e); return []; }
   }
   async function showRanking(finalScore){
     const box = document.getElementById("rankBox");
     box.innerHTML = "<h4>TOP20 랭킹</h4><div>불러오는 중...</div>";
     const name = ensurePlayerName();
+
+    // 1) 점수 제출 시도(실패해도 계속 진행)
     try { await submitScore(name, finalScore); } catch(_){}
-    const data = await loadTop(20);
-    if (Array.isArray(data) && data.length > 0) {
+
+    // 2) 랭킹 조회
+    const top = await loadTop(20);
+    if (Array.isArray(top) && top.length > 0) {
       box.innerHTML = "<h4>TOP20 랭킹</h4><ol>" +
-        data.map(r => `<li>${r.rank}. ${r.name} — ${r.score}</li>`).join("") +
+        top.map((r, i) => `<li>${String(i+1).padStart(2,'0')}. ${_escape(r.name||'무명')} — ${Number(r.score||0)}</li>`).join("") +
         "</ol>";
     } else {
       box.innerHTML = "<h4>TOP20 랭킹</h4><div>아직 랭킹 데이터가 없어요.</div>";
     }
   }
-  /* ================== 게임 로직 ================== */
+
+  /* ================== 게임 로직 (원본 그대로) ================== */
   (()=>{ 
     const app = document.getElementById('app');
     const board = document.getElementById('board');

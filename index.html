@@ -8,14 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <!-- ✅ 이미지 프리로드 (방법1) -->
+  <!-- ✅ 이미지 프리로드 -->
   <link rel="preload" as="image" href="images/yellow.png">
   <link rel="preload" as="image" href="images/blue.png">
   <link rel="preload" as="image" href="images/red.png">
   <link rel="preload" as="image" href="images/bomb.png">
   <link rel="preload" as="image" href="images/hp.png">
   <link rel="preload" as="image" href="images/levelup.png">
-<style>
+  <style>
     :root {
       --bg: #0a0c16;
       --panel: #101425;
@@ -81,9 +81,9 @@
     .boardGrid { width: 100%; aspect-ratio: 1/1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; }
     .hole { aspect-ratio: 1/1; position: relative; background: var(--tile-dirt) repeat; background-size: 16px 16px; border: var(--px) solid #1a203c; box-shadow: 0 0 0 calc(var(--px)) #000 inset; overflow: hidden; }
 
-    /* 두더지 */
-    .mole {
-      width: 82%; height: 82%;
+    /* 두더지/아이템 */
+    .mole{
+      width: 100%; height: 100%;
       position: absolute; left: 50%; bottom: 0;
       transform: translateX(-50%) translateY(100%);
       opacity: 0;
@@ -209,14 +209,10 @@
   </div>
 
 <script>
-  /* ✅ 이미지 미리 로드 (방법2) */
+  /* ✅ 이미지 미리 로드 */
   const preloadImgs = [
-    "images/yellow.png",
-    "images/blue.png",
-    "images/red.png",
-    "images/bomb.png",
-    "images/hp.png",
-    "images/levelup.png"
+    "images/yellow.png","images/blue.png","images/red.png",
+    "images/bomb.png","images/hp.png","images/levelup.png"
   ];
   preloadImgs.forEach(src => { const img = new Image(); img.src = src; });
 
@@ -315,8 +311,8 @@
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
 
-    // 특수 타입(1~5레벨 구간 내 1회 등장) 플래그
-    let spawnedHp=false, spawnedLv=false;
+    // 특수 타입(1~5레벨 구간 내 1회 등장) 플래그: HP는 제외, LEVELUP만 유지
+    let spawnedLv=false;
 
     // ===== Audio (합성) =====
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -397,37 +393,52 @@
       return false;
     }
 
+    // ⬇️ HP 확률: 게이지만 본다
+    function hpChanceByGauge(g){
+      if(g > 50) return 0.0;   // 50% 초과 → 0%
+      if(g > 20) return 0.20;  // 20~50% → 10%
+      return 0.80;             // 20% 이하 → 30%
+    }
+
     function spawnOne(){
       if(!isPlaying) return;
       const free=[]; for(let i=0;i<HOLES;i++) if(!active.has(i)) free.push(i);
       if(!free.length) return;
+
       let candidates=free.filter(i=>!isAdjacentToActive(i)); if(!candidates.length) candidates=free;
       const idx=candidates[Math.floor(Math.random()*candidates.length)];
       const mole=holes[idx].firstChild;
 
       const h=getHonor(score).level;
 
-      // 특수 타입 스폰(레벨 1~5 구간에서 각 1회만)
+      // ── 타입 선택 시작 ──
       let tkey=null;
-      if(h<=5){
-        if(!spawnedHp && Math.random()<0.05){ tkey='hp'; spawnedHp=true; }
-        else if(!spawnedLv && Math.random()<0.05){ tkey='levelup'; spawnedLv=true; }
+
+      // (A) HP: 공통 특수 규칙 완전 제외, 게이지 확률만
+      const hpChance = hpChanceByGauge(gauge);
+      if(Math.random() < hpChance){
+        tkey = 'hp';
       }
 
+      // (B) 아직 미정이면 레벨업(레벨 1~5에서 1회 등장)
+      if(!tkey && h <= 5 && !spawnedLv && Math.random() < 0.05){
+        tkey = 'levelup';
+        spawnedLv = true;
+      }
+
+      // (C) 아직 미정이면 지뢰/일반
       if(!tkey){
         const isMine=Math.random()<MINE_RATE;
         tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
+      // ── 타입 선택 끝 ──
 
       active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
 
       // 라벨 텍스트
-      const ensureLabel=()=>{
-        let tag=mole.querySelector('.labelText');
-        if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
-        tag.textContent = (tkey==='mine' ? '지뢰' : tkey==='hp' ? 'HP' : tkey==='levelup' ? 'LEVEL UP!' : '');
-      };
-      ensureLabel();
+      let tag=mole.querySelector('.labelText');
+      if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
+      tag.textContent = (tkey==='mine' ? '지뢰' : tkey==='hp' ? 'HP' : tkey==='levelup' ? 'LEVEL UP!' : '');
 
       const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
       upMap.set(idx,{to, type:tkey, missed:true});
@@ -497,7 +508,6 @@
     }
 
     function showLevelUpText(){
-      // 트로피 라벨 아래에 잠깐 뜨는 연출
       const rect=trophyLabel.getBoundingClientRect();
       const el=document.createElement('div');
       el.textContent='LEVEL UP!';
@@ -552,7 +562,6 @@
     }
 
     function bumpOneLevel(){
-      // 현재 레벨 → 다음 레벨 임계치로 점수 보정
       const h=getHonor(score);
       const nextLv=Math.min(h.level+1, HONOR_LEVELS);
       const need=honorThreshold(nextLv);
@@ -665,8 +674,9 @@
     function realStart(){
       isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
       prevLevel=getHonor(score).level; boostUntilLevel=0;
-      // 특수 스폰 리셋
-      spawnedHp=false; spawnedLv=false;
+
+      // 레벨업 스폰 리셋 (HP는 리셋 개념 없음)
+      spawnedLv=false;
 
       updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
 
@@ -729,7 +739,9 @@
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
-      spawnedHp=false; spawnedLv=false;
+
+      // 레벨업 리셋만 유지 (HP 없음)
+      spawnedLv=false;
 
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; diffSel.disabled=false;

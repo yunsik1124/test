@@ -45,13 +45,18 @@
       overflow: hidden;
     }
 
-    /* === [ADD] 상단 로컬 최고 기록 한 줄 (디자인 최소) === */
+    /* === [변경] 상단 로컬 최고 기록: .app 기준 절대배치 === */
     #bestLocal{
-      position: fixed; top: 190px; left: 0; right: 0; z-index: 100;
-      text-align: center; pointer-events: none;
+      position: absolute;      /* ← .app 기준으로 고정 */
+      top: 0;                  /* 필요시 숫자만 조절 (예: 6px) */
+      left: 0; right: 0;
+      z-index: 10;
+      text-align: center;
+      pointer-events: none;
       font-family: 'Press Start 2P', ui-sans-serif;
       font-size: 10px; line-height: 1;
-      color: var(--gold); text-shadow: 0 1px 0 #000;
+      color: var(--gold);
+      text-shadow: 0 1px 0 #000;
     }
 
     /* 게임 화면 */
@@ -64,7 +69,7 @@
       grid-template-rows: auto auto 1fr auto;
       gap: 0px;
       padding: var(--pad);
-      position: relative;
+      position: relative;  /* ← absolute 기준점 */
       image-rendering: pixelated;
       transform: translateY(var(--y-offset));
       will-change: transform;
@@ -167,14 +172,12 @@
   </style>
 </head>
 <body>
-  <!-- === [ADD] 상단 로컬 최고 기록 === -->
-  <div id="bestLocal">
-    최고점수: <span id="bestLocalScore">0</span> &nbsp;·&nbsp;
-    최고명예: <span id="bestLocalHonor">Lv.1 · 새싹 연습생</span>
-  </div>
-
   <div class="app" id="app">
-
+    <!-- === [변경] .app 내부로 이동: 기기와 무관하게 고정 위치 === -->
+    <div id="bestLocal">
+      최고점수: <span id="bestLocalScore">0</span> &nbsp;·&nbsp;
+      최고명예: <span id="bestLocalHonor">Lv.1 · 새싹 연습생</span>
+    </div>
 
     <header class="panel">
       <h1>두더지 게임</h1>
@@ -250,7 +253,7 @@
     const resScore = document.getElementById('resScore');
     const resHonor = document.getElementById('resHonor');
     const againBtn = document.getElementById('again');
-    const closeResBtn = document.getElementById('closeRes');
+    theCloseBtn = document.getElementById('closeRes');
 
     const cd = document.getElementById('countdown');
     const cdNum = document.getElementById('countNum');
@@ -412,9 +415,9 @@
 
     // ⬇️ HP 확률: 게이지만 본다
     function hpChanceByGauge(g){
-      if(g > 50) return 0.0;   // 50% 초과 → 0%
-      if(g > 20) return 0.20;  // 20~50% → 10%
-      return 0.80;             // 20% 이하 → 30%
+      if(g > 50) return 0.0;
+      if(g > 20) return 0.20;
+      return 0.80;
     }
 
     function spawnOne(){
@@ -431,19 +434,19 @@
       // ── 타입 선택 시작 ──
       let tkey=null;
 
-      // (A) HP: 공통 특수 규칙 완전 제외, 게이지 확률만
+      // (A) HP: 게이지 확률만
       const hpChance = hpChanceByGauge(gauge);
       if(Math.random() < hpChance){
         tkey = 'hp';
       }
 
-      // (B) 아직 미정이면 레벨업(레벨 1~5에서 1회 등장)
+      // (B) 레벨 1~5에서 1회 LEVEL UP
       if(!tkey && h <= 5 && !spawnedLv && Math.random() < 0.05){
         tkey = 'levelup';
         spawnedLv = true;
       }
 
-      // (C) 아직 미정이면 지뢰/일반
+      // (C) 지뢰/일반
       if(!tkey){
         const isMine=Math.random()<MINE_RATE;
         tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
@@ -452,7 +455,7 @@
 
       active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
 
-      // 라벨 텍스트
+      // 라벨
       let tag=mole.querySelector('.labelText');
       if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
       tag.textContent = (tkey==='mine' ? '지뢰' : tkey==='hp' ? 'HP' : tkey==='levelup' ? 'LEVEL UP!' : '');
@@ -473,19 +476,17 @@
       spawnTimeout=setTimeout(spawnLoop, interval);
     }
 
-    // 완전히 내려간 뒤에만 miss() 처리(일반만), 특수는 lastHit 리프레시로 콤보 유지
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
       if(entry){ clearTimeout(entry.to); }
-      mole.classList.remove('up');   // 내려가기 시작
+      mole.classList.remove('up');
       active.delete(idx);
 
       const label=mole.querySelector('.labelText'); if(label) label.remove();
 
       if (auto && entry && entry.missed) {
         if (NORMAL_TYPES.has(entry.type)) {
-          // 일반 두더지 자동 미스 → 콤보 끊김
           const onEnd = () => {
             mole.removeEventListener('transitionend', onEnd);
             miss();
@@ -493,10 +494,9 @@
           };
           mole.addEventListener('transitionend', onEnd, { once: true });
         } else if (SPECIAL_TYPES.has(entry.type)) {
-          // 특수 아이템 자동 퇴장 → 콤보 유지: 타이머만 갱신
           const onEnd = () => {
             mole.removeEventListener('transitionend', onEnd);
-            lastHit = performance.now(); // 👈 콤보 타이머 리프레시
+            lastHit = performance.now();
             if (entry) upMap.delete(idx);
           };
           mole.addEventListener('transitionend', onEnd, { once: true });
@@ -508,13 +508,11 @@
       }
     }
 
-    // ===== 콤보 점수 가중치 =====
     function comboScoreFactor(c){
       const step=0.15, cap=2.0;
       return Math.min(1 + Math.max(0,c-1)*step, cap);
     }
 
-    // ===== 토스트/이펙트 =====
     function showComboToast(mole,combo){
       if(combo<2)return;
       const r=mole.getBoundingClientRect();
@@ -543,7 +541,7 @@
       setTimeout(()=> el.remove(), 700);
     }
 
-    function animateFly(mole,target){ // target: 'gauge' | 'trophy'
+    function animateFly(mole,target){
       const r=mole.getBoundingClientRect();
       const ghost=mole.cloneNode(true);
       ghost.style.position='fixed';
@@ -586,7 +584,6 @@
       afterLevelCheck();
     }
 
-    // ===== 판정/효과 =====
     function hitNormal(idx,mole){
       const now=performance.now();
       const d={comboWindow:1400, comboStep:0.10, gainMult:1};
@@ -596,11 +593,9 @@
       const tkey=mole.dataset.type;
       const honor=paramsFromLevel(getHonor(score).level);
 
-      // 게이지 회복
       const gain=baseGain[tkey]*d.gainMult*honor.gainMultHonor*(1+Math.max(0,combo-1)*d.comboStep);
       setGauge(gauge+gain);
 
-      // 점수
       const ptsBase=typePoints[tkey];
       const pts = Math.round(ptsBase * comboScoreFactor(combo));
       score+=pts;
@@ -622,7 +617,7 @@
     function hitHp(idx,mole){
       const now=performance.now(); lastActionAt=now;
       if(now-lastHit<=1400) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
-      setGauge(gauge+50); // 50% 회복
+      setGauge(gauge+50);
       const entry=upMap.get(idx); if(entry) entry.missed=false;
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'gauge');
@@ -635,7 +630,7 @@
       const entry=upMap.get(idx); if(entry) entry.missed=false;
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'trophy');
-      bumpOneLevel(); // 레벨 1 상승
+      bumpOneLevel();
       showLevelUpText();
       hide(idx);
     }
@@ -647,7 +642,6 @@
       buzzStrong();
     }
 
-    // hole 전체 클릭 허용
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying)return;
       const hole=e.target.closest('.hole'); if(!hole) return;
@@ -662,7 +656,6 @@
       } else miss();
     });
 
-    // ===== 카운트다운 & 플로우 =====
     function beginCountdown(cb){
       if(isCounting) return;
       isCounting=true; cd.classList.remove('hidden');
@@ -684,15 +677,13 @@
     function triggerWarning(level){
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
-      boostUntilLevel = level + 1;        // 현재 레벨에서만 유효
+      boostUntilLevel = level + 1;
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
     function realStart(){
       isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
       prevLevel=getHonor(score).level; boostUntilLevel=0;
-
-      // 레벨업 스폰 리셋 (HP는 리셋 개념 없음)
       spawnedLv=false;
 
       updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
@@ -707,7 +698,6 @@
         setGauge(gauge - drain*dt);
       }, dt*1000);
 
-      // 시작 직후 한 마리 즉시
       spawnOne();
       spawnLoop();
 
@@ -721,7 +711,6 @@
       beginCountdown(realStart);
     }
 
-    // 화면의 모든 두더지 제거
     function clearAllMoles(){
       document.querySelectorAll('.mole').forEach(m=>{
         m.classList.remove('up');
@@ -756,8 +745,6 @@
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
-
-      // 레벨업 리셋만 유지 (HP 없음)
       spawnedLv=false;
 
       updateTrophy(); updateGaugeColor();
@@ -765,7 +752,6 @@
       resetBtn.disabled=false;
     }
 
-    /* ==== 결과 팝업 ==== */
     function showResult(){
       const h=getHonor(score);
       resScore.textContent=String(score);
@@ -774,7 +760,7 @@
       playCrowd(h.level);
       if(!muted){ try{ new Audio('sound/fail.wav').play(); }catch(e){} }
 
-      /* === [ADD] 로컬 최고 기록 갱신 === */
+      /* === 로컬 최고 기록 갱신 (점수/명예) === */
       const bestScoreKey = 'bestScore';
       const bestHonorLevelKey = 'bestHonorLevel';
       const bestHonorNameKey  = 'bestHonorName';
@@ -782,16 +768,13 @@
       const prevBestScore = parseInt(localStorage.getItem(bestScoreKey) || '0', 10) || 0;
       const prevBestHonorLv = parseInt(localStorage.getItem(bestHonorLevelKey) || '1', 10) || 1;
 
-      // 점수 최고 갱신
       if (score > prevBestScore) {
         localStorage.setItem(bestScoreKey, String(score));
       }
-      // 명예 최고 갱신(레벨 우선 비교)
       if (h.level > prevBestHonorLv) {
         localStorage.setItem(bestHonorLevelKey, String(h.level));
         localStorage.setItem(bestHonorNameKey, h.name);
       } else if (h.level === prevBestHonorLv) {
-        // 레벨 같을 때 점수로 타이브레이크
         if (score > prevBestScore) {
           localStorage.setItem(bestHonorLevelKey, String(h.level));
           localStorage.setItem(bestHonorNameKey, h.name);
@@ -811,13 +794,13 @@
       bestLocalScoreEl.textContent = String(bestScore);
       bestLocalHonorEl.textContent = `Lv.${bestHonorLv} · ${bestHonorName}`;
     }
-    renderBestLocal(); // 초기 1회
+    renderBestLocal();
 
-    /* ==== 이벤트 바인딩 ==== */
+    /* ==== 이벤트 ==== */
     startBtn.addEventListener('click', start);
     resetBtn.addEventListener('click', reset);
     againBtn?.addEventListener('click', ()=>{ hideResult(); start(); });
-    closeResBtn?.addEventListener('click', hideResult);
+    theCloseBtn?.addEventListener('click', hideResult);
     muteBtn.addEventListener('click',()=>{
       const m=(window._muted=!window._muted);
       muted=m; muteBtn.textContent=m?'🔇':'🔊';

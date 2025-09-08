@@ -461,9 +461,7 @@
     const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
-    /* ▼ 초기 부스터 설정: 시작 후 12초간 스폰 간격↓, 동시 활성 수↑ */
-    const INITIAL_BOOST_MS = 12000;
-    let initialBoostUntil = 0;
+
 
     /* ▼ 지뢰 기본 확률 하향 */
     const MINE_BASE_CHANCE = 0.12; // 기존 0.22 → 0.12
@@ -617,12 +615,7 @@
       // 레벨 경고 부스터
       if(level < boostUntilLevel){ interval = Math.max(80, Math.floor(interval/3)); maxActive = Math.min(6, maxActive+1); }
 
-      // ★ 초기 부스터 (시작 후 12초간)
-      const nowTs = performance.now();
-      if(nowTs < initialBoostUntil){
-        interval = Math.max(70, Math.floor(interval * 0.75));    // 더 촘촘히
-        maxActive = Math.max(maxActive, 1 + Math.floor((initialBoostUntil - nowTs)/4000)); // 초반 동시 3~4개까지
-      }
+
 
       const need=Math.max(0, maxActive - active.size);
       for(let n=0;n<need;n++) spawnOne();
@@ -840,9 +833,7 @@
       prevLevel=getHonor(score).level; boostUntilLevel=0;
       spawnedLv=false;
 
-      // 초기 부스터 시작
-      initialBoostUntil = performance.now() + INITIAL_BOOST_MS;
-
+     
       updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
 
       const dt=0.1;
@@ -973,5 +964,6 @@
 </script>
 </body>
 </html>
+
 
 

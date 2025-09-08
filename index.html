@@ -187,10 +187,20 @@
     #rankBox .r-crown { width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; }
     #rankBox .r-name { font-weight: 800; }
     #rankBox .r-score, #rankBox .r-level { font-variant-numeric: tabular-nums; }
+
+    /* 일시정지 상태 시 시각적 힌트(살짝 어둡게) */
+    .paused-mask {
+      position: absolute; inset: 0; border-radius: 2px;
+      background: rgba(0,0,0,.18);
+      z-index: 5; pointer-events: none; display: none;
+    }
+    .app.is-paused .paused-mask { display: block; }
   </style>
 </head>
 <body>
   <div class="app" id="app">
+    <div class="paused-mask"></div>
+
     <!-- 상단: 아이디 줄 + 최고점수/명예 줄 -->
     <div id="bestLocal">
       <div class="idRow">
@@ -219,11 +229,13 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">1.7</label>
+      <label for="version">1.8</label>
       <!-- ✅ 랭킹 버튼 -->
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
+      <!-- ✅ 요청: 리셋과 사운드 사이 '일시정지/플레이' 토글 -->
+      <button id="pause" disabled>일시정지</button>
       <button id="mute">🔊</button>
     </section>
   </div>
@@ -321,7 +333,7 @@
   function applyBestHonorColor(){
     const el = document.getElementById('bestLocalHonor');
     const txt = el.textContent || '';
-    theMatch = txt.match(/Lv\.(\d+)/);
+    const theMatch = txt.match(/Lv\.(\d+)/);
     const lv = theMatch ? parseInt(theMatch[1],10) : 1;
     el.style.color = honorColor(lv);
   }
@@ -439,7 +451,8 @@
     const gaugeBar = document.getElementById('gaugeBar');
     const startBtn = document.getElementById('start');
     const resetBtn = document.getElementById('reset');
-    const diffSel = document.getElementById('difficulty'); // 없지만 기존 변수 유지 (호환성)
+    const pauseBtn = document.getElementById('pause');
+    const diffSel = document.getElementById('difficulty'); // (호환용, 없음)
     const muteBtn = document.getElementById('mute');
     const trophyFill = document.getElementById('trophyFill');
     const trophyLabel = document.getElementById('trophyLabel');
@@ -462,23 +475,17 @@
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
     /* ▼ 지뢰 기본 확률 원복 */
-    const MINE_BASE_CHANCE = 0.20; // 이전 기본값으로 복구
+    const MINE_BASE_CHANCE = 0.20;
 
     function paramsFromLevel(level){
       const s = (level-1)/(HONOR_LEVELS-1);
-      // 동시 최대 활성 수(하드캡)
       const maxActive =
         (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
         (s < 0.70) ? 4 :
         (s < 0.90) ? 5 : 6;
-
-      // 평균 스폰 간격(밀도)
       const meanInterval = 900 - 600*s; // 900ms → 300ms
-
-      // 가끔 2마리 동시로 더 뽑는 확률
       const pairProb = 0.12 + 0.28*s;   // 0.12 ~ 0.40
-
       return {
         drainMult: 1 + 1.0*s,
         gainMultHonor: Math.max(0.35, 1 - 0.6*s),
@@ -489,31 +496,25 @@
     }
 
     // ==== 스폰 빈도 조절 상수 ====
-    // 평상시: 현재의 80% 빈도(= 20% 감소) → mean(평균 간격)은 1/0.8 = 1.25배
-    const NORMAL_FREQ_MULT = 0.8;   // frequency 기준 배율
-    // 워닝: 현재 대비 **50% 상향** → mean은 1/1.5 배
-    const WARN_FREQ_MULT   = 1.5;   // frequency 기준 배율  ← (요청 반영)
+    const NORMAL_FREQ_MULT = 0.8;   // 평상시 80%
+    const WARN_FREQ_MULT   = 1.5;   // 워닝 1.5배
 
     // 상태
-    let isPlaying=false, isCounting=false, score=0, gauge=100, combo=0, maxCombo=0;
+    let isPlaying=false, isCounting=false, isPaused=false;
+    let score=0, gauge=100, combo=0, maxCombo=0;
     let active=new Set();         // 해당 구멍만 점유
     let upMap=new Map(); // idx -> {to, type, missed}
     let tickTimer=null, countdownTimer=null;
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
-
-    // ✅ 새 콤보 상태(시간무관): 직전 액션이 콤보를 끊었는지 여부
-    let comboAlive=false;
-
-    // ==== 포아송 기반 스케줄러 ====
     let rafId = null;
     let nextSpawnAt = 0;
 
-    function randExp(mean){
-      const u = Math.random();
-      return -Math.log(1-u) * mean;
-    }
+    // ✅ 콤보 상태: "직전 끊김 여부"
+    let comboAlive=false;
+
+    function randExp(mean){ const u=Math.random(); return -Math.log(1-u)*mean; }
 
     // Audio
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -588,15 +589,13 @@
       return 0.80;
     }
 
-    // === 한 마리 스폰 (같은 구멍만 중복 금지, 인접 제한 제거) ===
+    // === 한 마리 스폰 (같은 구멍만 중복 금지) ===
     function spawnOne(){
-      if(!isPlaying) return;
+      if(!isPlaying || isPaused) return;
 
-      // 여유 구멍
       const free=[]; for(let i=0;i<HOLES;i++) if(!active.has(i)) free.push(i);
       if(!free.length) return;
 
-      // 랜덤 구멍 선택
       const idx=free[Math.floor(Math.random()*free.length)];
       const mole=holes[idx].firstChild;
 
@@ -614,7 +613,6 @@
         tkey = isMine ? 'mine' : normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
 
-      // 활성 처리
       active.add(idx);
       mole.dataset.type = tkey;
       mole.dataset.wasHit = '0';
@@ -628,7 +626,6 @@
       upMap.set(idx,{to, type:tkey, missed:true});
     }
 
-    // ⬇⬇⬇ 같은 구멍만 겹침 금지: 내려가는 애니 끝난 뒤 active 해제
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
@@ -643,13 +640,8 @@
         const label=mole.querySelector('.labelText'); if(label) label.remove();
 
         if (auto && entry && entry.missed && NORMAL_TYPES.has(entry.type) && !wasHit) {
-          // 일반 두더지를 놓쳤다 → 미스 처리(콤보 끊김)
           miss();
         }
-        if (auto && entry && SPECIAL_TYPES.has(entry.type) && !wasHit) {
-          // 특수아이템을 놓쳐도 콤보는 유지 (아무 처리 안 함)
-        }
-
         active.delete(idx);
         if (entry) upMap.delete(idx);
       };
@@ -721,9 +713,9 @@
     function consumeTap(idx){
       const entry = upMap.get(idx);
       if(entry){
-        entry.missed = false;           // 미스 아님
-        clearTimeout(entry.to);         // 남은 업타임 타이머 제거
-        upMap.delete(idx);              // 이후 같은 구멍은 tappable=false
+        entry.missed = false;
+        clearTimeout(entry.to);
+        upMap.delete(idx);
       }
     }
 
@@ -796,7 +788,7 @@
       buzzStrong();
     }
 
-    // ✅ 더블탭/핀치 확대 억제 (뷰 확대 방지)
+    // ✅ 제스처/확대 억제
     const EV_DOWN = window.PointerEvent ? 'pointerdown' : ('ontouchstart' in window ? 'touchstart' : 'mousedown');
     const appEl = document.getElementById('app');
     appEl.addEventListener(EV_DOWN, (e)=>{ if(e.cancelable) e.preventDefault(); }, { passive:false });
@@ -810,14 +802,13 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 내려가는 중에도 히트 허용 + 같은 두더지 더블탭 방지
+    // ✅ 입력 처리 (일시정지 시 입력 무시)
     board.addEventListener('pointerdown',e=>{
-      if(!isPlaying)return;
+      if(!isPlaying || isPaused) return;
       const hole=e.target.closest('.hole'); if(!hole) return;
       const mole=hole.firstChild;
       const idx = mole ? Number(mole.dataset.idx) : -1;
 
-      // 이미 처리된 두더지는 무시
       if(mole && mole.dataset.wasHit === '1') return;
 
       const tappable = upMap.has(idx);
@@ -854,39 +845,26 @@
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
-    // ==== 포아송 스케줄러 틱 ====
+    // ==== 포아송 스케줄러 ====
     function scheduleNext(now){
       const { meanInterval } = paramsFromLevel(getHonor(score).level);
-
-      // 기본 mean
       let mean = meanInterval;
-
-      // ▼ 평상시 빈도 0.8배(= 20% 감소) → 평균 간격 1/0.8배
       mean *= (1 / NORMAL_FREQ_MULT);
-
-      // ▼ 워닝 부스터: 현재 대비 **50% 상향** → 평균 간격 1/1.5배
       if(getHonor(score).level < boostUntilLevel){
-        mean = meanInterval / WARN_FREQ_MULT; // 워닝은 평상시 하향 무시하고 '현재 대비' 정확히 1.5배
+        mean = meanInterval / WARN_FREQ_MULT;
       }
-
-      // 공백 완화: 활성 없는 동안은 더 촘촘하게
-      if(active.size === 0){
-        mean *= 0.75;
-      }
-
-      // 최대 공백 캡
+      if(active.size === 0){ mean *= 0.75; }
       const gap = randExp(mean);
-      const MAX_GAP = 600; // ms
+      const MAX_GAP = 600;
       nextSpawnAt = now + Math.min(gap, MAX_GAP);
     }
 
     function spawnTick(now){
+      if(isPaused) return;
       const { maxActive, pairProb } = paramsFromLevel(getHonor(score).level);
-
       if(now >= nextSpawnAt){
         if(active.size < maxActive){
           spawnOne();
-          // 빈판일 땐 쌍 스폰 조금 더 공격적으로
           const bonusPair = (active.size === 1 && Math.random()<0.15) ? 1 : 0;
           if((Math.random() < pairProb || bonusPair) && active.size < maxActive){
             spawnOne();
@@ -897,35 +875,35 @@
     }
 
     function realStart(){
-      isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
-      prevLevel=getHonor(score).level; boostUntilLevel=0;
-      spawnedLv=false;
-      comboAlive=false;
+      isPlaying=true; isPaused=false; score=0; combo=0; maxCombo=0; gauge=100;
+      prevLevel=getHonor(score).level; boostUntilLevel=0; spawnedLv=false; comboAlive=false;
 
       updateTrophy(); updateGaugeColor(); startBgm();
 
       const dt=0.1;
       if(tickTimer){ clearInterval(tickTimer); }
       tickTimer=setInterval(()=>{
+        if(isPaused) return;
         const honor=paramsFromLevel(getHonor(score).level);
         let drain=8; if(active.size===0) drain=14; else if(!comboAlive) drain=10;
         drain*=honor.drainMult;
         setGauge(gauge - drain*dt);
       }, dt*1000);
 
-      // 첫 스폰 예약 및 루프 시작
       const now = performance.now();
       scheduleNext(now);
 
       function loop(ts){
         if(!isPlaying){ rafId=null; return; }
-        spawnTick(ts);
+        if(!isPaused) spawnTick(ts);
         rafId = requestAnimationFrame(loop);
       }
       rafId = requestAnimationFrame(loop);
 
       startBtn.disabled=true; if(diffSel) diffSel.disabled=true;
       resetBtn.disabled=false;
+      pauseBtn.disabled=false; pauseBtn.textContent='일시정지';
+      app.classList.remove('is-paused');
     }
     function start(){
       if(isPlaying||isCounting) return;
@@ -945,11 +923,13 @@
     }
     function endGame(){
       if(!isPlaying) return;
-      isPlaying=false;
+      isPlaying=false; isPaused=false;
       if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
       if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
       clearAllMoles();
       stopBgm();
+      pauseBtn.disabled=true; pauseBtn.textContent='일시정지';
+      app.classList.remove('is-paused');
       showResult();
     }
     function hardClearTimers(){
@@ -962,7 +942,7 @@
       hardClearTimers();
       if(isCounting){ cd.classList.add('hidden'); isCounting=false; }
       if(isPlaying){ stopBgm(); }
-      isPlaying=false;
+      isPlaying=false; isPaused=false;
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
@@ -971,6 +951,8 @@
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; if(diffSel) diffSel.disabled=false;
       resetBtn.disabled=false;
+      pauseBtn.disabled=true; pauseBtn.textContent='일시정지';
+      app.classList.remove('is-paused');
     }
 
     function showResult(){
@@ -1015,6 +997,58 @@
     renderBestLocal();
     applyBestHonorColor();
 
+    // ===== 일시정지/재개 =====
+    function pauseGame(){
+      if(!isPlaying || isPaused) return;
+      isPaused = true;
+      app.classList.add('is-paused');
+      stopBgm();
+
+      // 스폰 루프/게이지 소모 정지
+      if(tickTimer){ /* 남겨두되 핸들러에서 isPaused 체크 */ }
+      // hide 타이머 일시정지: 남은시간 계산은 단순화 → 재개 시 새 타임아웃 부여
+      upMap.forEach((e, idx)=>{
+        try{ clearTimeout(e.to); }catch(_){}
+        // 'paused' 마커만 남김
+        upMap.set(idx, { ...e, to: null, paused: true });
+      });
+
+      pauseBtn.textContent = '플레이';
+    }
+    function resumeGame(){
+      if(!isPlaying || !isPaused) return;
+      isPaused = false;
+      app.classList.remove('is-paused');
+      if(!muted) startBgm();
+
+      // 스폰 스케줄 재설정
+      scheduleNext(performance.now());
+      if(!rafId){
+        const loop = (ts)=>{
+          if(!isPlaying){ rafId=null; return; }
+          if(!isPaused) spawnTick(ts);
+          rafId = requestAnimationFrame(loop);
+        };
+        rafId = requestAnimationFrame(loop);
+      }
+
+      // 올라와 있던 두더지들 다시 내려가도록 타임아웃 재부여(대략값)
+      upMap.forEach((e, idx)=>{
+        if(e && e.paused){
+          const tkey = e.type || 'yellow';
+          const remain = Math.min(800, typeCfg[tkey]?.up || 700);
+          const to = setTimeout(()=> hide(idx, true), remain);
+          upMap.set(idx, { ...e, to, paused: false });
+        }
+      });
+
+      pauseBtn.textContent = '일시정지';
+    }
+    pauseBtn.addEventListener('click', ()=>{
+      if(!isPlaying) return;
+      if(isPaused) resumeGame(); else pauseGame();
+    });
+
     // 이벤트
     startBtn.addEventListener('click', start);
     resetBtn.addEventListener('click', reset);
@@ -1023,7 +1057,7 @@
     muteBtn.addEventListener('click',()=>{
       const m=(window._muted=!window._muted);
       muted=m; muteBtn.textContent=m?'🔇':'🔊';
-      if(m) stopBgm(); else if(isPlaying) startBgm();
+      if(m) stopBgm(); else if(isPlaying && !isPaused) startBgm();
     });
 
     // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP100 조회

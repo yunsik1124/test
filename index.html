@@ -219,7 +219,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">1.5</label>
+      <label for="version">1.6</label>
       <!-- ✅ 랭킹 버튼 -->
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
@@ -308,7 +308,7 @@
     const name=HONOR_NAMES[level-1]||HONOR_NAMES[HONOR_NAMES.length-1];
     const prev=honorThreshold(level);
     const next=honorThreshold(Math.min(level+1,HONOR_LEVELS));
-    const progress= level>=HONOR_LEVELS?1:Math.max(0,Math.min(1,(score-prev)/Math.max(1,next-prev)));
+    const progress= level>=HONOR_LEVELS?1:Math.max(0,Math.min(1,(score-prev)/(Math.max(1,next-prev))));
     return {level,name,progress, prev, next};
   }
 
@@ -461,12 +461,12 @@
     const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
-    /* ▼ 지뢰 기본 확률 하향 (유지) */
-    const MINE_BASE_CHANCE = 0.12;
+    /* ▼ 지뢰 기본 확률 원복 */
+    const MINE_BASE_CHANCE = 0.20; // 이전 기본값으로 복구
 
     function paramsFromLevel(level){
       const s = (level-1)/(HONOR_LEVELS-1);
-      // 동시 최대 활성 수(하드캡, 그냥 상한만)
+      // 동시 최대 활성 수(하드캡)
       const maxActive =
         (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
@@ -489,15 +489,18 @@
     }
 
     // 상태
-    let isPlaying=false, isCounting=false, score=0, gauge=100, combo=0, maxCombo=0, lastHit=0, lastActionAt=0;
-    let active=new Set();         // ⬅️ 해당 구멍만 점유
+    let isPlaying=false, isCounting=false, score=0, gauge=100, combo=0, maxCombo=0;
+    let active=new Set();         // 해당 구멍만 점유
     let upMap=new Map(); // idx -> {to, type, missed}
     let tickTimer=null, countdownTimer=null;
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
 
-    // ==== (NEW) 포아송 기반 스케줄러 ====
+    // ✅ 새 콤보 상태(시간무관): 직전 액션이 콤보를 끊었는지 여부
+    let comboAlive=false;
+
+    // ==== 포아송 기반 스케줄러 ====
     let rafId = null;
     let nextSpawnAt = 0;
 
@@ -634,11 +637,11 @@
         const label=mole.querySelector('.labelText'); if(label) label.remove();
 
         if (auto && entry && entry.missed && NORMAL_TYPES.has(entry.type) && !wasHit) {
+          // 일반 두더지를 놓쳤다 → 미스 처리(콤보 끊김)
           miss();
         }
         if (auto && entry && SPECIAL_TYPES.has(entry.type) && !wasHit) {
-          // 특수아이템을 놓쳐도 콤보 끊기지 않게: 콤보 타이머 갱신
-          lastHit = performance.now();
+          // 특수아이템을 놓쳐도 콤보는 유지 (아무 처리 안 함)
         }
 
         active.delete(idx);
@@ -708,10 +711,7 @@
       afterLevelCheck();
     }
 
-    /* ▼ 콤보 판정 윈도우 완화 (기존 1800 → 2200ms) */
-    const COMBO_WINDOW_MS = 2200;
-
-    /* ========= ✅ 더블탭 방지 핵심: 첫 탭 순간 소모 ========= */
+    /* ========= 더블탭 방지: 첫 탭 순간 소모 ========= */
     function consumeTap(idx){
       const entry = upMap.get(idx);
       if(entry){
@@ -721,20 +721,28 @@
       }
     }
 
+    // ==== 콤보: "직전 끊김 여부" 기반 ====
+    function onComboHit(mole){
+      if (comboAlive) combo++;
+      else { combo = 1; comboAlive = true; }
+      maxCombo = Math.max(maxCombo, combo);
+      hitChime(); showComboToast(mole, combo);
+    }
+    function breakCombo(){
+      combo = 0;
+      comboAlive = false;
+    }
+
     function hitNormal(idx,mole){
-      // 더블탭 방지: 바로 소모
       consumeTap(idx);
       if(mole.dataset.wasHit === '1') return;
       mole.dataset.wasHit = '1';
 
-      const now=performance.now();
-      const d={comboWindow:COMBO_WINDOW_MS, comboStep:0.10, gainMult:1};
-      if(now-lastHit<=d.comboWindow) combo++; else combo=1;
-      lastHit=now; lastActionAt=now; maxCombo=Math.max(maxCombo,combo);
+      onComboHit(mole);
 
       const tkey=mole.dataset.type;
       const honor=paramsFromLevel(getHonor(score).level);
-      const gain=baseGain[tkey]*d.gainMult*honor.gainMultHonor*(1+Math.max(0,combo-1)*d.comboStep);
+      const gain=baseGain[tkey]*honor.gainMultHonor*(1+Math.max(0,combo-1)*0.10);
       setGauge(gauge+gain);
 
       const ptsBase=typePoints[tkey];
@@ -742,14 +750,14 @@
       score+=pts;
 
       afterLevelCheck();
-      hitChime(); showComboToast(mole,combo); hide(idx);
+      hide(idx);
     }
     function hitMine(idx,mole){
       consumeTap(idx);
       if(mole.dataset.wasHit === '1') return;
       mole.dataset.wasHit = '1';
 
-      const now=performance.now(); lastActionAt=now; combo=0;
+      breakCombo();
       setGauge(gauge-35);
       app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300);
       mineBlast(); hide(idx);
@@ -759,10 +767,8 @@
       if(mole.dataset.wasHit === '1') return;
       mole.dataset.wasHit = '1';
 
-      const now=performance.now(); lastActionAt=now;
-      if(now-lastHit<=COMBO_WINDOW_MS) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
+      onComboHit(mole);
       setGauge(gauge+50);
-      hitChime(); showComboToast(mole,combo);
       animateFly(mole,'gauge');
       hide(idx);
     }
@@ -771,26 +777,25 @@
       if(mole.dataset.wasHit === '1') return;
       mole.dataset.wasHit = '1';
 
-      const now=performance.now(); lastActionAt=now;
-      if(now-lastHit<=COMBO_WINDOW_MS) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
-      hitChime(); showComboToast(mole,combo);
+      onComboHit(mole);
       animateFly(mole,'trophy');
       bumpOneLevel();
       showLevelUpText();
       hide(idx);
     }
     function miss(){
-      const now=performance.now(); lastActionAt=now;
-      setGauge(gauge-22); combo=0;
+      breakCombo();
+      setGauge(gauge-22);
       app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300);
       buzzStrong();
     }
 
     // ✅ 더블탭/핀치 확대 억제 (뷰 확대 방지)
     const EV_DOWN = window.PointerEvent ? 'pointerdown' : ('ontouchstart' in window ? 'touchstart' : 'mousedown');
-    app.addEventListener(EV_DOWN, (e)=>{ if(e.cancelable) e.preventDefault(); }, { passive:false });
+    const appEl = document.getElementById('app');
+    appEl.addEventListener(EV_DOWN, (e)=>{ if(e.cancelable) e.preventDefault(); }, { passive:false });
     let _lastTap=0;
-    app.addEventListener('touchend', (e)=>{
+    appEl.addEventListener('touchend', (e)=>{
       const now=Date.now();
       if(now-_lastTap<350 && e.cancelable) e.preventDefault();
       _lastTap=now;
@@ -843,14 +848,14 @@
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
-    // ==== (NEW) 포아송 스케줄러 틱 ====
+    // ==== 포아송 스케줄러 틱 ====
     function scheduleNext(now){
       const { meanInterval } = paramsFromLevel(getHonor(score).level);
       let mean = meanInterval;
 
-      // 레벨 경고 부스터: 기존 50%가 아니라 30% "더 자주" → 평균간격 * 0.7
+      // 레벨 경고 부스터: 30% 더 잦게
       if(getHonor(score).level < boostUntilLevel){
-        mean *= 0.7; // 🔧 여기 변경 (0.5 → 0.7)
+        mean *= 0.7;
       }
 
       // 공백 완화: 활성 없는 동안은 더 촘촘하게
@@ -858,7 +863,7 @@
         mean *= 0.75;
       }
 
-      // 최대 공백 캡 (너무 길어지지 않게)
+      // 최대 공백 캡
       const gap = randExp(mean);
       const MAX_GAP = 600; // ms
       nextSpawnAt = now + Math.min(gap, MAX_GAP);
@@ -884,15 +889,15 @@
       isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
       prevLevel=getHonor(score).level; boostUntilLevel=0;
       spawnedLv=false;
+      comboAlive=false;
 
-      updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
+      updateTrophy(); updateGaugeColor(); startBgm();
 
       const dt=0.1;
       if(tickTimer){ clearInterval(tickTimer); }
       tickTimer=setInterval(()=>{
-        const now=performance.now();
         const honor=paramsFromLevel(getHonor(score).level);
-        let drain=8; if(active.size===0) drain=14; else if(now-lastActionAt>2500) drain=10;
+        let drain=8; if(active.size===0) drain=14; else if(!comboAlive) drain=10;
         drain*=honor.drainMult;
         setGauge(gauge - drain*dt);
       }, dt*1000);
@@ -950,7 +955,7 @@
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
-      spawnedLv=false;
+      spawnedLv=false; comboAlive=false;
 
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; if(diffSel) diffSel.disabled=false;

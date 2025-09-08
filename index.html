@@ -187,7 +187,6 @@
     #rankBox .r-crown { width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; }
     #rankBox .r-name { font-weight: 800; }
     #rankBox .r-score, #rankBox .r-level { font-variant-numeric: tabular-nums; }
-    /* 명예 이름 색상은 JS에서 honorColor로 지정 */
   </style>
 </head>
 <body>
@@ -220,9 +219,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-     <label for="version">1.1</label>
-   
-      </select>
+     <label for="version">1.2</label>
       <!-- ✅ 랭킹 버튼 -->
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
@@ -345,7 +342,7 @@
       return data;
     } catch(e){ console.error("submitScore 실패", e); return { ok:false, error:String(e) }; }
   }
-  async function loadTop(limit=100){  // ✅ 100으로 확대
+  async function loadTop(limit=100){
     try {
       const ctrl = new AbortController();
       const t = setTimeout(()=> ctrl.abort(), 7000);
@@ -401,17 +398,16 @@
         const h = getHonor(score);
         const col = honorColor(h.level);
 
-        // 왕관 (1~3위), 4위부터 없음
+        // 왕관 (1~3위)
         let crown = '';
-        if (i === 0) crown = crownSVG('#FFD84D');           // 금
-        else if (i === 1) crown = crownSVG('#C0C7D1');      // 은
-        else if (i === 2) crown = crownSVG('#D1925A');      // 동
+        if (i === 0) crown = crownSVG('#FFD84D');
+        else if (i === 1) crown = crownSVG('#C0C7D1');
+        else if (i === 2) crown = crownSVG('#D1925A');
 
-        // 내 아이디 노란색 강조
+        // 내 아이디 강조
         const isMe = myName && nRaw === myName;
         const nameHtml = `<span class="r-name"${isMe ? ' style="color:#ffeb3b; font-weight:900;"' : ''}>${nEsc}</span>`;
 
-        // 템플릿: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예
         return `<li>
                   <span class="r-rank">${rank}</span>
                   ${crown ? `<span class="r-crown">${crown}</span>` : `<span class="r-crown"></span>`}
@@ -488,8 +484,6 @@
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
-
-    // (진동 시스템 전체 삭제됨)
 
     // Audio
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -591,7 +585,10 @@
         tkey=isMine?'mine':normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
 
-      active.add(idx); mole.dataset.type=tkey; mole.classList.add('up');
+      active.add(idx);
+      mole.dataset.type = tkey;
+      mole.dataset.wasHit = '0';   // ✅ 히트 여부 초기화
+      mole.classList.add('up');
 
       let tag=mole.querySelector('.labelText');
       if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
@@ -623,10 +620,20 @@
 
       if (auto && entry && entry.missed) {
         if (NORMAL_TYPES.has(entry.type)) {
-          const onEnd = () => { mole.removeEventListener('transitionend', onEnd); miss(); if (entry) upMap.delete(idx); };
+          const onEnd = () => {
+            mole.removeEventListener('transitionend', onEnd);
+            // ✅ 터치 성공한 두더지는 자동 미스 무시
+            if (mole.dataset.wasHit === '1') { if (entry) upMap.delete(idx); return; }
+            miss();
+            if (entry) upMap.delete(idx);
+          };
           mole.addEventListener('transitionend', onEnd, { once: true });
         } else if (SPECIAL_TYPES.has(entry.type)) {
-          const onEnd = () => { mole.removeEventListener('transitionend', onEnd); lastHit = performance.now(); if (entry) upMap.delete(idx); };
+          const onEnd = () => {
+            mole.removeEventListener('transitionend', onEnd);
+            lastHit = performance.now(); // 특수 아이템은 콤보 유지
+            if (entry) upMap.delete(idx);
+          };
           mole.addEventListener('transitionend', onEnd, { once: true });
         } else { if (entry) upMap.delete(idx); }
       } else { if (entry) upMap.delete(idx); }
@@ -708,6 +715,7 @@
       score+=pts;
 
       const entry=upMap.get(idx); if(entry) entry.missed=false;
+      mole.dataset.wasHit = '1'; // ✅ 성공 터치 마킹
       afterLevelCheck();
 
       hitChime(); showComboToast(mole,combo); hide(idx);
@@ -716,6 +724,7 @@
       const now=performance.now(); lastActionAt=now; combo=0;
       setGauge(gauge-35);
       const entry=upMap.get(idx); if(entry) entry.missed=false;
+      mole.dataset.wasHit = '1'; // ✅
       app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300);
       mineBlast(); hide(idx);
     }
@@ -724,6 +733,7 @@
       if(now-lastHit<=1400) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
       setGauge(gauge+50);
       const entry=upMap.get(idx); if(entry) entry.missed=false;
+      mole.dataset.wasHit = '1'; // ✅
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'gauge');
       hide(idx);
@@ -732,6 +742,7 @@
       const now=performance.now(); lastActionAt=now;
       if(now-lastHit<=1400) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
       const entry=upMap.get(idx); if(entry) entry.missed=false;
+      mole.dataset.wasHit = '1'; // ✅
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'trophy');
       bumpOneLevel();
@@ -758,13 +769,12 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 버그 보완: 내려가는 중(transition 중)에도 히트 허용
+    // ✅ 내려가는 중에도 히트 허용
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying)return;
       const hole=e.target.closest('.hole'); if(!hole) return;
       const mole=hole.firstChild;
       const idx = mole ? Number(mole.dataset.idx) : -1;
-      // upMap에 있으면 아직 화면 상의 유효 타겟(올라오는 중/머무름/내려가는 중 포함)
       const tappable = upMap.has(idx);
       if(mole && tappable){
         const t=mole.dataset.type;
@@ -796,7 +806,6 @@
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
       boostUntilLevel = level + 1;
-      // (진동 호출 제거)
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
@@ -846,7 +855,6 @@
       if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
       clearAllMoles();
       stopBgm();
-      // (진동 호출 제거)
       showResult();
     }
     function hardClearTimers(){
@@ -924,7 +932,7 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
 
-    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP100 조회 (내 아이디 강조 포함)
+    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP100 조회
     showRankBtn.addEventListener('click', ()=>{
       resModal.classList.remove('hidden');
       showRanking(0, {submit:false});

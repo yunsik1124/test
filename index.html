@@ -156,7 +156,7 @@
     #comboHud {
       position: absolute; right: 10px; top: 6px; z-index: 20;
       font-family: 'Press Start 2P'; font-size: 10px;
-      color: #fff; /* ✅ 기본 흰색 (50 전) */
+      color: #fff; /* ✅ 기본 흰색 (버닝 전) */
       text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,255,255,.35);
       display: none;
     }
@@ -251,7 +251,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">2.0</label>
+      <label for="version">2.1</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -487,8 +487,8 @@
 
     const HOLES=9, ROWS=3, COLS=3;
 
-    /* ✅ 유지시간(요청값): 노란 900ms / 파란 700ms / 빨간 400ms */
-    const typeCfg={yellow:{up:900},blue:{up:700},red:{up:400},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+    /* ✅ 유지시간(히트 가능 구간) 소폭 단축: 노란 800ms / 파란 600ms / 빨간 350ms */
+    const typeCfg={yellow:{up:800},blue:{up:600},red:{up:350},mine:{up:900},hp:{up:900},levelup:{up:1000}};
 
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
@@ -510,14 +510,13 @@
       // 기본 간격(낮을수록 빠름)
       const meanInterval = 900 - 600*s; // 900ms → 300ms
 
-      // 레벨이 오를수록 2배까지 스폰 가속 (요청: 50레벨에 가까워질수록 빈도 2배)
+      // 레벨이 오를수록 2배까지 스폰 가속
       const levelSpawnBoost = 1 + s; // 1.0 → 2.0
 
       const pairProb = 0.12 + 0.28*s;   // 0.12 ~ 0.40
 
       return {
         drainMult: 1 + 1.0*s,
-        // ✅ 게이지 획득량: 50레벨 근접할수록 더 많이 차도록 유지(상향 곡선)
         gainMultHonor: 1 + 2.0*s, // 1.0 → 3.0
         meanInterval,
         levelSpawnBoost,
@@ -528,7 +527,7 @@
 
     // ==== 스폰 빈도 조절 상수 ====
     const NORMAL_FREQ_MULT = 0.8;   // 평상시 80%
-    const WARN_FREQ_MULT   = 2.0;   // ✅ 워닝 2배
+    const WARN_FREQ_MULT   = 2.0;   // WARNING 2배
 
     // 상태
     let isPlaying=false, isCounting=false, isPaused=false;
@@ -545,8 +544,9 @@
     // ✅ 콤보 상태: "직전 끊김 여부"
     let comboAlive=false;
 
-    // 🔥 버닝 상태
+    // 🔥 버닝 상태 + 텍스트표시 타이머
     let burning=false;
+    let burnTextTimer=null;
 
     function randExp(mean){ const u=Math.random(); return -Math.log(1-u)*mean; }
 
@@ -759,15 +759,25 @@
       }
     }
 
-    // 🔥 버닝 토글
+    // 🔥 버닝 토글 (텍스트는 2초만 표시)
     function setBurning(on){
       if(on === burning) return;
       burning = on;
-      document.getElementById('burning').classList.toggle('hidden', !burning);
-      // ✅ 콤보 HUD 색상 토글
+
+      // HUD 색 토글
       if (burning) comboHud.classList.add('burning');
       else comboHud.classList.remove('burning');
-      if(burning) burningSound();
+
+      // 텍스트 표시는 2초 제한
+      const burnEl = document.getElementById('burning');
+      if (burnTextTimer){ clearTimeout(burnTextTimer); burnTextTimer=null; }
+      if (burning) {
+        burnEl.classList.remove('hidden');
+        burnTextTimer = setTimeout(()=>{ burnEl.classList.add('hidden'); burnTextTimer=null; }, 2000);
+        burningSound();
+      } else {
+        burnEl.classList.add('hidden');
+      }
     }
 
     // ==== 콤보: "직전 끊김 여부" 기반 + HUD ====
@@ -775,7 +785,6 @@
       if(combo>=2 && comboAlive){
         comboHud.textContent = `x${combo} COMBO`;
         comboHud.classList.add('active');
-        // 50 콤보 미만은 흰색, 50 이상은 노란색(버닝 클래스가 색상 바꿔줌)
         if (combo >= 50) comboHud.classList.add('burning');
         else comboHud.classList.remove('burning');
       }else{
@@ -787,7 +796,6 @@
       if (comboAlive) combo++;
       else { combo = 1; comboAlive = true; }
       maxCombo = Math.max(maxCombo, combo);
-      // 50콤보 달성 시 버닝 발동
       if(combo === 50) setBurning(true);
       updateComboHud();
       hitChime(); showComboToast(mole, combo);
@@ -873,34 +881,30 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 입력 처리 (일시정지 시 입력 무시) + 허공 터치도 miss 처리
-    // 1) 기본: 보드 내부 처리
+    // ✅ 입력 처리 (일시정지 시 입력 무시)
+    // 🎯 성공 판정은 반드시 .mole.up 요소를 직접 터치했을 때만!
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
-      const hole=e.target.closest('.hole');
 
-      // 보드의 빈칸(그리드 갭) 눌러도 miss
-      if(!hole){ miss(); return; }
-
-      const mole=hole.firstChild;
-      const idx = mole ? Number(mole.dataset.idx) : -1;
-
-      if(mole && mole.dataset.wasHit === '1') return;
-
-      const tappable = upMap.has(idx);
-      if(mole && tappable){
-        const t=mole.dataset.type;
-        if(t==='mine')         hitMine(idx,mole);
-        else if(t==='hp')      hitHp(idx,mole);
-        else if(t==='levelup') hitLevelup(idx,mole);
-        else                   hitNormal(idx,mole);
-      } else {
-        // 구멍은 눌렀지만 두더지가 없거나 이미 내려감 → miss
-        miss();
+      const targetMole = e.target.closest('.mole.up');
+      if(!targetMole){
+        // 보드 내부인데 활성 두더지 직접 터치가 아니면 miss
+        const inside = !!e.target.closest('.hole');
+        if(inside) miss();
+        return;
       }
+
+      const idx = Number(targetMole.dataset.idx || -1);
+      if(idx<0 || !upMap.has(idx)) { miss(); return; }
+
+      const t = targetMole.dataset.type;
+      if(t==='mine')         hitMine(idx,targetMole);
+      else if(t==='hp')      hitHp(idx,targetMole);
+      else if(t==='levelup') hitLevelup(idx,targetMole);
+      else                   hitNormal(idx,targetMole);
     });
 
-    // 2) 보드 영역 "허공" 탭 보강: 캡처 단계에서 좌표로 판정
+    // 보드 영역 "허공" 탭 보강(캡처 단계)
     document.addEventListener('pointerdown', (e)=>{
       if(!isPlaying || isPaused) return;
 
@@ -913,15 +917,10 @@
       const insideBoard = x>=br.left && x<=br.right && y>=br.top && y<=br.bottom;
       if(!insideBoard) return;
 
-      // 이미 위의 보드 핸들러에서 처리될 수도 있으니,
-      // "탭 대상이 활성 두더지"가 아니면 miss로 강제 처리
-      const hole = e.target.closest('.hole');
-      if (hole) {
-        const mole = hole.firstChild;
-        const idx = mole ? Number(mole.dataset.idx) : -1;
-        if (idx>=0 && upMap.has(idx)) return; // 활성 두더지면 정상 처리(위 핸들러가 잡음)
-      }
-      // 여기 오면 허공/비활성 → miss
+      // 활성 두더지 직접 터치는 보드 핸들러에 맡김
+      if (e.target.closest('.mole.up')) return;
+
+      // 그 외 보드 내부 허공 터치 → miss
       miss();
     }, true);
 
@@ -953,13 +952,9 @@
       const p = paramsFromLevel(getHonor(score).level);
       let mean = p.meanInterval;
 
-      // 평시 기본 빈도(80% 보정의 역수로 계산돼 mean 감소)
       mean *= (1 / NORMAL_FREQ_MULT);
-
-      // 레벨 가속(최대 2배 더 빠름)
       mean /= p.levelSpawnBoost;
 
-      // WARNING 가속(요청: 2배)
       if(getHonor(score).level < boostUntilLevel){
         mean = mean / WARN_FREQ_MULT;
       }

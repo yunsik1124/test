@@ -345,7 +345,7 @@
       return data;
     } catch(e){ console.error("submitScore 실패", e); return { ok:false, error:String(e) }; }
   }
-  async function loadTop(limit=50){  // ✅ 50으로 확대
+  async function loadTop(limit=100){  // ✅ 100으로 확대
     try {
       const ctrl = new AbortController();
       const t = setTimeout(()=> ctrl.abort(), 7000);
@@ -374,7 +374,7 @@
   // ✅ 랭킹 렌더: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예(호칭)
   async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
-    box.innerHTML = "<h4>TOP50 랭킹</h4><div>불러오는 중...</div>";
+    box.innerHTML = "<h4>TOP100 랭킹</h4><div>불러오는 중...</div>";
 
     // 필요할 때만 아이디와 점수 제출
     let postErr = null;
@@ -388,9 +388,9 @@
       } catch(e) { postErr = String(e); }
     }
 
-    // 랭킹 조회 (50개)
+    // 랭킹 조회 (100개)
     let top = [];
-    try { top = await loadTop(50); } catch(e) { console.error(e); }
+    try { top = await loadTop(100); } catch(e) { console.error(e); }
 
     if (Array.isArray(top) && top.length > 0) {
       const items = top.map((r, i) => {
@@ -425,14 +425,14 @@
                 </li>`;
       }).join("");
       box.innerHTML = `
-        <h4>TOP50 랭킹</h4>
+        <h4>TOP100 랭킹</h4>
         <ol class="rank-list">
           ${items}
         </ol>
       `;
     } else {
       const hint = postErr ? `<br><small style="color:#f88">(${_escape(postErr)})</small>` : "";
-      box.innerHTML = `<h4>TOP50 랭킹</h4><div>랭킹을 불러오지 못했습니다.${hint}</div>`;
+      box.innerHTML = `<h4>TOP100 랭킹</h4><div>랭킹을 불러오지 못했습니다.${hint}</div>`;
     }
   }
 
@@ -895,7 +895,7 @@
       }
       renderBestLocal();
 
-      showRanking(score); // 점수 제출 + TOP50 표시
+      showRanking(score); // 점수 제출 + TOP100 표시
     }
     function hideResult(){ resModal.classList.add('hidden'); }
 
@@ -924,7 +924,7 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
 
-    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP50 조회 (내 아이디 강조 포함)
+    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP100 조회 (내 아이디 강조 포함)
     showRankBtn.addEventListener('click', ()=>{
       resModal.classList.remove('hidden');
       showRanking(0, {submit:false});

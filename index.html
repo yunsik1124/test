@@ -197,7 +197,6 @@
         <div class="trophy-icon" aria-hidden="true">🏆</div>
         <div class="trophy-track"><div class="trophy-fill" id="trophyFill"></div></div>
       </div>
-      <!-- 요청대로 트로피 라벨은 색상 유지(미변경) -->
       <div class="trophy-label" id="trophyLabel">Lv.1 · 새싹 연습생</div>
     </header>
 
@@ -213,6 +212,8 @@
         <option value="normal" selected>보통</option>
         <option value="hard">어려움</option>
       </select>
+      <!-- ✅ 추가: 랭킹 버튼 (난이도와 시작 사이) -->
+      <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
       <button id="mute">🔊</button>
@@ -243,10 +244,9 @@
   ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png"]
     .forEach(src => { const i = new Image(); i.src = src; });
 
-  /* ===== 랭킹 서버 설정 (★ 이 두 항목만 프로젝트 값으로 교체) ===== */
-  const RANK_API = "https://script.google.com/macros/s/AKfycbyyE6V0FtR7d6GwRjpR8NqUtSImfviu438FdbfurfGOOjfnFb7P3gqGFe2eaOtoIFkW2w/exec"; // 반드시 /exec
-  const RANK_SECRET = "TEST"; // ★ Apps Script의 SECRET과 동일
-  /* ================================================================== */
+  /* ===== 랭킹 서버 설정 ===== */
+  const RANK_API = "https://script.google.com/macros/s/AKfycbyyE6V0FtR7d6GwRjpR8NqUtSImfviu438FdbfurfGOOjfnFb7P3gqGFe2eaOtoIFkW2w/exec";
+  const RANK_SECRET = "TEST";
 
   /* ===== 아이디 관리 ===== */
   function updatePlayerNameLabel() {
@@ -267,12 +267,12 @@
     const cur = localStorage.getItem('playerName') || '';
     if (!confirm(`아이디를 초기화할까요?\n현재: ${cur || '-'}\n초기화 후 다시 설정할 수 있어요.`)) return;
     localStorage.removeItem('playerName');
-    updatePlayerNameLabel(); // 다음 시작 때 재요청
+    updatePlayerNameLabel();
   }
   updatePlayerNameLabel();
   document.getElementById('resetIdBtn').addEventListener('click', resetPlayerName);
 
-  /* ===== 명예 시스템 (전역) — showRanking과 게임 로직 모두에서 사용 ===== */
+  /* ===== 명예 시스템 ===== */
   const HONOR_LEVELS = 50;
   function honorThreshold(i){
     if(i<=1) return 0;
@@ -304,19 +304,8 @@
     return {level,name,progress, prev, next};
   }
 
-  /* ===== 명예 컬러(10단계) ===== */
-  const HONOR_COLORS = [
-    '#a0a6c8', // 1~5
-    '#6bdc8b', // 6~10
-    '#43d19e', // 11~15
-    '#7c9cff', // 16~20
-    '#a887ff', // 21~25
-    '#ff8bea', // 26~30
-    '#ff9b57', // 31~35
-    '#ffc247', // 36~40
-    '#ffd84d', // 41~45
-    '#ff5b5b'  // 46~50
-  ];
+  /* 명예 컬러(10단계) */
+  const HONOR_COLORS = ['#a0a6c8','#6bdc8b','#43d19e','#7c9cff','#a887ff','#ff8bea','#ff9b57','#ffc247','#ffd84d','#ff5b5b'];
   function honorColor(level){
     const idx = Math.min(9, Math.max(0, Math.floor((Number(level||1)-1)/5)));
     return HONOR_COLORS[idx];
@@ -324,20 +313,19 @@
   function applyBestHonorColor(){
     const el = document.getElementById('bestLocalHonor');
     const txt = el.textContent || '';
-    // 레벨 숫자 추출
     const m = txt.match(/Lv\.(\d+)/);
     const lv = m ? parseInt(m[1],10) : 1;
-    el.style.color = honorColor(lv); // 크기/폰트 변경 없이 글자색만
+    el.style.color = honorColor(lv);
   }
 
-  /* ===== 랭킹 서버 통신 (GAS 호환: 프리플라이트 방지 & 견고한 파싱) ===== */
+  /* ===== 랭킹 서버 통신 ===== */
   const _escape = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   function safeJsonParse(text){ try { return JSON.parse(text); } catch { return null; } }
 
   async function submitScore(name, score){
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(()=> ctrl.abort(), 7000); // 7초 타임아웃
+      const t = setTimeout(()=> ctrl.abort(), 7000);
       const body = new URLSearchParams({ secret: RANK_SECRET, name, score: String(Number(score||0)) });
       const res  = await fetch(RANK_API, { method: "POST", body, signal: ctrl.signal });
       clearTimeout(t);
@@ -361,17 +349,21 @@
       return [];
     } catch(e){ console.error("loadTop 실패", e); return []; }
   }
-  async function showRanking(finalScore){
+
+  // 🔧 수정: 조회만 할 때는 점수 제출하지 않도록 옵션 추가
+  async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
     box.innerHTML = "<h4>TOP20 랭킹</h4><div>불러오는 중...</div>";
-    const name = ensurePlayerName();
 
-    // 점수 제출(실패해도 진행)
+    // 필요할 때만 아이디와 점수 제출
     let postErr = null;
-    try {
-      const res = await submitScore(name, finalScore);
-      if (res && res.ok === false && res.error) postErr = res.error;
-    } catch(e) { postErr = String(e); }
+    if (opt.submit !== false) {
+      const name = ensurePlayerName();
+      try {
+        const res = await submitScore(name, finalScore);
+        if (res && res.ok === false && res.error) postErr = res.error;
+      } catch(e) { postErr = String(e); }
+    }
 
     // 랭킹 조회
     let top = [];
@@ -422,6 +414,7 @@
     const cd = document.getElementById('countdown');
     const cdNum = document.getElementById('countNum');
     const warn = document.getElementById('warning');
+    const showRankBtn = document.getElementById('showRank'); // ✅ 추가
 
     const HOLES=9, ROWS=3, COLS=3;
     const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
@@ -430,7 +423,6 @@
     const normalTypes=['yellow','blue','blue','red'];
     const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
-    const MINE_RATE = 0.22;
 
     function paramsFromLevel(level){
       const s = (level-1)/(HONOR_LEVELS-1);
@@ -499,7 +491,6 @@
     function updateTrophy(){
       const h=getHonor(score);
       trophyFill.style.width=`${Math.round(h.progress*100)}%`;
-      // 요청: 트로피 라벨은 색 고정, 텍스트만 갱신
       trophyLabel.textContent=`Lv.${h.level} · ${h.name}`;
     }
     function updateGaugeColor(){
@@ -772,7 +763,7 @@
     }
     function start(){
       if(isPlaying||isCounting) return;
-      ensurePlayerName();       // 최초 1회 아이디 설정
+      ensurePlayerName();
       resetBtn.disabled=false;
       beginCountdown(realStart);
     }
@@ -853,11 +844,9 @@
       const bestHonorName = localStorage.getItem('bestHonorName') || '새싹 연습생';
       bestLocalScoreEl.textContent = String(bestScore);
       bestLocalHonorEl.textContent = `Lv.${bestHonorLv} · ${bestHonorName}`;
-      // ★ 명예 컬러 적용(글자색만)
       bestLocalHonorEl.style.color = honorColor(bestHonorLv);
     }
     renderBestLocal();
-    // 혹시 외부에서 변경된 경우 대비해서 한 번 더 보정
     applyBestHonorColor();
 
     // 이벤트
@@ -871,7 +860,12 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
 
-    // endGame을 전역 노출(게이지 0에서 호출됨)
+    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP20 조회
+    showRankBtn.addEventListener('click', ()=>{
+      resModal.classList.remove('hidden');
+      showRanking(0, {submit:false});
+    });
+
     window.endGame = endGame;
   })();
 </script>

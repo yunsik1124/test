@@ -138,6 +138,7 @@
       transition: transform .3s ease, opacity .5s;
       background-repeat:no-repeat; background-position:center; background-size: 90% 90%;
       image-rendering: pixelated;
+      pointer-events: none; /* ✅ 터치 영역을 구멍 전체로 쓰므로 자체 포인터는 막음 */
     }
     .mole.up { transform: translateX(-50%) translateY(0); opacity: 1; }
     .mole[data-type="yellow"] { background-image:url('images/yellow.png'); }
@@ -488,8 +489,8 @@
 
     const HOLES=9, ROWS=3, COLS=3;
 
-    /* ✅ 유지시간(히트 가능 구간): 노란 900ms / 파란 700ms / 빨간 500ms */
-    const typeCfg={yellow:{up:900},blue:{up:700},red:{up:500},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+    /* ✅ 유지시간(히트 가능 구간): 노란 1100ms / 파란 900ms / 빨간 700ms */
+    const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
 
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
@@ -888,30 +889,41 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 입력 처리 (일시정지 시 입력 무시)
-    // 🎯 성공 판정은 반드시 .mole.up 요소를 직접 터치했을 때만!
+    /* ✅ 입력 처리 업데이트: 
+       - 성공 판정은 '구멍(.hole) 전체 영역'을 터치했을 때,
+         그 구멍의 두더지가 .up 상태이면 히트로 처리
+       - 구멍을 눌렀는데 .up이 아니면 miss
+    */
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
 
-      const targetMole = e.target.closest('.mole.up');
-      if(!targetMole){
-        // 보드 내부인데 활성 두더지 직접 터치가 아니면 miss
-        const inside = !!e.target.closest('.hole');
-        if(inside) miss();
+      const holeEl = e.target.closest('.hole');
+      if(!holeEl){
+        // 보드 영역(그리드 갭 등) 눌렀다면 miss
+        const insideBoard = !!e.target.closest('.board');
+        if(insideBoard) miss();
         return;
       }
 
-      const idx = Number(targetMole.dataset.idx || -1);
-      if(idx<0 || !upMap.has(idx)) { miss(); return; }
+      // 해당 구멍의 두더지
+      const mole = holeEl.firstChild;
+      const idx = Number(mole.dataset.idx || -1);
+      const isUp = mole.classList.contains('up');
 
-      const t = targetMole.dataset.type;
-      if(t==='mine')         hitMine(idx,targetMole);
-      else if(t==='hp')      hitHp(idx,targetMole);
-      else if(t==='levelup') hitLevelup(idx,targetMole);
-      else                   hitNormal(idx,targetMole);
+      if(idx<0 || !upMap.has(idx) || !isUp){
+        // 구멍은 눌렀지만 두더지가 없거나 시간이 끝난 경우 → miss
+        miss();
+        return;
+      }
+
+      const t = mole.dataset.type;
+      if(t==='mine')         hitMine(idx,mole);
+      else if(t==='hp')      hitHp(idx,mole);
+      else if(t==='levelup') hitLevelup(idx,mole);
+      else                   hitNormal(idx,mole);
     });
 
-    // 보드 영역 "허공" 탭 보강(캡처 단계)
+    // 보드 영역 "허공" 탭 보강(캡처 단계) — 구멍 아닌 보드 내부만 miss
     document.addEventListener('pointerdown', (e)=>{
       if(!isPlaying || isPaused) return;
 
@@ -924,10 +936,10 @@
       const insideBoard = x>=br.left && x<=br.right && y>=br.top && y<=br.bottom;
       if(!insideBoard) return;
 
-      // 활성 두더지 직접 터치는 보드 핸들러에 맡김
-      if (e.target.closest('.mole.up')) return;
+      // 구멍을 눌렀으면 board 핸들러에서 처리하므로 여기서 막음
+      if (e.target.closest('.hole')) return;
 
-      // 그 외 보드 내부 허공 터치 → miss
+      // 그 외(그리드 갭 등) → miss
       miss();
     }, true);
 

@@ -149,19 +149,19 @@
     .mole .labelText { position:absolute; bottom: 8%; left:50%; transform: translateX(-50%); font-weight:900; font-size: 14px; color:#fff; font-family: 'Press Start 2P'; text-shadow: 0 1px 0 #000; pointer-events: none; }
 
     /* 콤보 토스트 */
-    .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: var(--red); font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P'; }
+    .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: #fff; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P'; }
     @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%,-12px) scale(.85) } 30% { opacity: 1; transform: translate(-50%,-26px) scale(1.1) } 70% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%,-42px) scale(1) } }
 
     /* 콤보 HUD (우상단) */
     #comboHud {
       position: absolute; right: 10px; top: 6px; z-index: 20;
       font-family: 'Press Start 2P'; font-size: 10px;
-      color: #fff; /* ✅ 기본 흰색 (버닝 전) */
+      color: #fff; /* ✅ 기본 흰색 (x2~x49) */
       text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,255,255,.35);
       display: none;
     }
     #comboHud.active { display: block; }
-    /* 버닝 시 노란색 */
+    /* x50~ 버닝 시 노란색 */
     #comboHud.burning {
       color: var(--gold);
       text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,216,77,.55);
@@ -181,7 +181,7 @@
     .warn .txt { font-family: 'Press Start 2P'; font-size: 28px; color:#ff3333; text-shadow:0 0 8px rgba(255,0,0,.6), 0 2px 0 #000; animation: pulse 0.5s ease-in-out infinite alternate }
     @keyframes pulse { from{ transform: scale(0.98)} to{ transform: scale(1.04)} }
 
-    /* 🔥 버닝 오버레이 */
+    /* 🔥 버닝 오버레이 (표시는 2초 제한 유지) */
     .burn { position: fixed; inset: 0; display:grid; place-items:center; z-index: 76; pointer-events:none }
     .burn.hidden { display:none }
     .burn .txt { font-family: 'Press Start 2P'; font-size: 28px; color:#ffa54d; text-shadow:0 0 10px rgba(255,165,77,.9), 0 2px 0 #000; animation: flame 0.5s ease-in-out infinite alternate }
@@ -251,7 +251,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">2.1</label>
+      <label for="version">2.2</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -383,7 +383,8 @@
       clearTimeout(t);
       const text = await res.text();
       const data = safeJsonParse(text);
-      if (!data) { console.warn("loadTop: JSON 아님/파싱 실패", text); return []; }
+      if (!data) { console.warn("loadTop: JSON 아님/파싱 실패", text); return [];
+      }
       if (Array.isArray(data.top)) return data.top;
       if (Array.isArray(data.rank)) return data.rank;
       if (Array.isArray(data.rows)) return data.rows;
@@ -487,8 +488,8 @@
 
     const HOLES=9, ROWS=3, COLS=3;
 
-    /* ✅ 유지시간(히트 가능 구간) 소폭 단축: 노란 800ms / 파란 600ms / 빨간 350ms */
-    const typeCfg={yellow:{up:800},blue:{up:600},red:{up:350},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+    /* ✅ 유지시간(히트 가능 구간): 노란 900ms / 파란 700ms / 빨간 500ms */
+    const typeCfg={yellow:{up:900},blue:{up:700},red:{up:500},mine:{up:900},hp:{up:900},levelup:{up:1000}};
 
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
@@ -496,11 +497,11 @@
     const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
-    /* ▼ 지뢰 기본 확률 원복 */
+    /* ▼ 지뢰 기본 확률 */
     const MINE_BASE_CHANCE = 0.20;
 
     function paramsFromLevel(level){
-      const s = (level-1)/(HONOR_LEVELS-1); // 0~1 (Lv1~Lv50)
+      const s = (level-1)/(50-1); // 0~1 (Lv1~Lv50)
       const maxActive =
         (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
@@ -544,7 +545,7 @@
     // ✅ 콤보 상태: "직전 끊김 여부"
     let comboAlive=false;
 
-    // 🔥 버닝 상태 + 텍스트표시 타이머
+    // 🔥 버닝 상태 + 텍스트표시 타이머 (표시는 2초)
     let burning=false;
     let burnTextTimer=null;
 
@@ -694,7 +695,13 @@
       if(combo<2)return;
       const r=mole.getBoundingClientRect();
       const div=document.createElement('div');
-      div.className='comboToast'; div.textContent=`x${combo} COMBO!`;
+      div.className='comboToast';
+      div.textContent=`x${combo} COMBO!`;
+      // ✅ x2~x49: 화이트, x50~: 골드
+      div.style.color = (combo >= 50) ? 'var(--gold)' : '#fff';
+      div.style.textShadow = (combo >= 50)
+        ? '0 2px 0 #000, 0 0 10px rgba(255,216,77,.6)'
+        : '0 2px 10px rgba(0,0,0,.5)';
       div.style.left=(r.left+r.width/2)+'px'; div.style.top=(r.top)+'px';
       document.body.appendChild(div); setTimeout(()=>div.remove(),620);
     }
@@ -743,7 +750,7 @@
     }
     function bumpOneLevel(){
       const h=getHonor(score);
-      const nextLv=Math.min(h.level+1, HONOR_LEVELS);
+      const nextLv=Math.min(h.level+1, 50);
       const need=honorThreshold(nextLv);
       if(score < need) score = need;
       afterLevelCheck();

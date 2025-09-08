@@ -2,7 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- ✅ 확대 억제 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no">
   <title>두더지 게임</title>
 
   <!-- favicon 404 방지 -->
@@ -99,6 +101,13 @@
       image-rendering: pixelated;
       transform: translateY(var(--y-offset));
       will-change: transform;
+
+      /* ✅ 제스처/선택 억제 */
+      touch-action: none;
+      -ms-touch-action: none;
+      overscroll-behavior: contain;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .panel { background: var(--panel); border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding: 6px; }
@@ -339,7 +348,7 @@
       return data;
     } catch(e){ console.error("submitScore 실패", e); return { ok:false, error:String(e) }; }
   }
-  async function loadTop(limit=20){
+  async function loadTop(limit=50){  // ✅ 50으로 확대
     try {
       const ctrl = new AbortController();
       const t = setTimeout(()=> ctrl.abort(), 7000);
@@ -368,7 +377,7 @@
   // ✅ 랭킹 렌더: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예(호칭)
   async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
-    box.innerHTML = "<h4>TOP20 랭킹</h4><div>불러오는 중...</div>";
+    box.innerHTML = "<h4>TOP50 랭킹</h4><div>불러오는 중...</div>";
 
     // 필요할 때만 아이디와 점수 제출
     let postErr = null;
@@ -382,9 +391,9 @@
       } catch(e) { postErr = String(e); }
     }
 
-    // 랭킹 조회
+    // 랭킹 조회 (50개)
     let top = [];
-    try { top = await loadTop(20); } catch(e) { console.error(e); }
+    try { top = await loadTop(50); } catch(e) { console.error(e); }
 
     if (Array.isArray(top) && top.length > 0) {
       const items = top.map((r, i) => {
@@ -419,14 +428,14 @@
                 </li>`;
       }).join("");
       box.innerHTML = `
-        <h4>TOP20 랭킹</h4>
+        <h4>TOP50 랭킹</h4>
         <ol class="rank-list">
           ${items}
         </ol>
       `;
     } else {
       const hint = postErr ? `<br><small style="color:#f88">(${_escape(postErr)})</small>` : "";
-      box.innerHTML = `<h4>TOP20 랭킹</h4><div>랭킹을 불러오지 못했습니다.${hint}</div>`;
+      box.innerHTML = `<h4>TOP50 랭킹</h4><div>랭킹을 불러오지 못했습니다.${hint}</div>`;
     }
   }
 
@@ -483,10 +492,7 @@
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
 
-    // ===== 진동 유틸 =====
-    function vibrate(ms=500){
-      try { if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(ms); } catch(_) {}
-    }
+    // (진동 시스템 전체 삭제됨)
 
     // Audio
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -742,18 +748,36 @@
       buzzStrong();
     }
 
+    // ✅ 더블탭/핀치 확대 억제
+    const EV_DOWN = window.PointerEvent ? 'pointerdown' : ('ontouchstart' in window ? 'touchstart' : 'mousedown');
+    app.addEventListener(EV_DOWN, (e)=>{ if(e.cancelable) e.preventDefault(); }, { passive:false });
+    let _lastTap=0;
+    app.addEventListener('touchend', (e)=>{
+      const now=Date.now();
+      if(now-_lastTap<350 && e.cancelable) e.preventDefault();
+      _lastTap=now;
+    }, { passive:false });
+    ['gesturestart','gesturechange','gestureend'].forEach(tp=>{
+      document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
+    });
+
+    // ✅ 버그 보완: 내려가는 중(transition 중)에도 히트 허용
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying)return;
       const hole=e.target.closest('.hole'); if(!hole) return;
       const mole=hole.firstChild;
-      if(mole&&mole.classList.contains('up')){
-        const idx=Number(mole.dataset.idx);
+      const idx = mole ? Number(mole.dataset.idx) : -1;
+      // upMap에 있으면 아직 화면 상의 유효 타겟(올라오는 중/머무름/내려가는 중 포함)
+      const tappable = upMap.has(idx);
+      if(mole && tappable){
         const t=mole.dataset.type;
         if(t==='mine')         hitMine(idx,mole);
         else if(t==='hp')      hitHp(idx,mole);
         else if(t==='levelup') hitLevelup(idx,mole);
         else                   hitNormal(idx,mole);
-      } else miss();
+      } else {
+        miss();
+      }
     });
 
     function beginCountdown(cb){
@@ -775,7 +799,7 @@
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
       boostUntilLevel = level + 1;
-      vibrate(500); // ✅ 진동: WARNING 때 0.5초
+      // (진동 호출 제거)
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
@@ -825,7 +849,7 @@
       if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
       clearAllMoles();
       stopBgm();
-      vibrate(500); // ✅ 진동: 게임오버 때 0.5초
+      // (진동 호출 제거)
       showResult();
     }
     function hardClearTimers(){
@@ -874,7 +898,7 @@
       }
       renderBestLocal();
 
-      showRanking(score); // 점수 제출 + TOP20 표시
+      showRanking(score); // 점수 제출 + TOP50 표시
     }
     function hideResult(){ resModal.classList.add('hidden'); }
 
@@ -903,7 +927,7 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
 
-    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP20 조회 (내 아이디 강조 포함)
+    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP50 조회 (내 아이디 강조 포함)
     showRankBtn.addEventListener('click', ()=>{
       resModal.classList.remove('hidden');
       showRanking(0, {submit:false});

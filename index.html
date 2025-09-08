@@ -50,7 +50,7 @@
       overflow: hidden;
     }
 
-    /* 상단 고정 정보 (아이디/초기화, 최고점수/명예) */
+    /* 상단 고정 정보 */
     #bestLocal{
       position: absolute;
       top: -50px;
@@ -169,12 +169,16 @@
     /* 랭킹 박스 */
     #rankBox { background:#0e1328; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding:8px; max-height:220px; overflow:auto; font-size:10px; text-align:left; }
     #rankBox h4 { margin:0 0 6px 0; color:var(--gold); font-size:10px; font-family:'Press Start 2P'; }
-    #rankBox .rank-list { margin:0; padding-left:18px; list-style: decimal; }
+
+    /* 리스트: 순위 번호를 직접 렌더링하므로 기본 마커 제거 */
+    #rankBox .rank-list { margin:0; padding:0; list-style: none; }
     #rankBox .rank-list li { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
+
+    #rankBox .r-rank { width: 18px; text-align: right; font-family:'Press Start 2P'; }
     #rankBox .r-crown { width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; }
     #rankBox .r-name { font-weight: 800; }
-    #rankBox .r-score { font-variant-numeric: tabular-nums; }
-    #rankBox .r-honor { /* 색상은 JS에서 동적으로 지정 */ }
+    #rankBox .r-score, #rankBox .r-level { font-variant-numeric: tabular-nums; }
+    /* 명예 이름 색상은 JS에서 honorColor로 지정 */
   </style>
 </head>
 <body>
@@ -361,7 +365,7 @@
     `;
   }
 
-  // 🔧 수정: 조회만 할 때는 점수 제출하지 않도록 옵션 추가
+  // ✅ 랭킹 렌더: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예(호칭)
   async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
     box.innerHTML = "<h4>TOP20 랭킹</h4><div>불러오는 중...</div>";
@@ -384,13 +388,14 @@
 
     if (Array.isArray(top) && top.length > 0) {
       const items = top.map((r, i) => {
+        const rank = i + 1;
         const score = Number(r.score || r.Score || 0);
         const nRaw = String(r.name || r.Name || '무명');
         const nEsc = _escape(nRaw);
         const h = getHonor(score);
         const col = honorColor(h.level);
 
-        // 왕관 아이콘 (1~3위)
+        // 왕관 (1~3위), 4위부터 없음
         let crown = '';
         if (i === 0) crown = crownSVG('#FFD84D');           // 금
         else if (i === 1) crown = crownSVG('#C0C7D1');      // 은
@@ -400,13 +405,17 @@
         const isMe = myName && nRaw === myName;
         const nameHtml = `<span class="r-name"${isMe ? ' style="color:#ffeb3b; font-weight:900;"' : ''}>${nEsc}</span>`;
 
+        // 템플릿: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예
         return `<li>
-                  ${crown ? `<span class="r-crown">${crown}</span>` : `<span class="r-crown" style="width:14px;height:14px;"></span>`}
+                  <span class="r-rank">${rank}</span>
+                  ${crown ? `<span class="r-crown">${crown}</span>` : `<span class="r-crown"></span>`}
                   ${nameHtml}
                   <span class="r-sep"> — </span>
                   <span class="r-score">${score}</span>
                   <span class="r-dot"> · </span>
-                  <span class="r-honor" style="color:${col}">Lv.${h.level} · ${_escape(h.name)}</span>
+                  <span class="r-level">Lv.${h.level}</span>
+                  <span class="r-dot"> · </span>
+                  <span class="r-honor-name" style="color:${col}">${_escape(h.name)}</span>
                 </li>`;
       }).join("");
       box.innerHTML = `

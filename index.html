@@ -170,7 +170,8 @@
     #rankBox { background:#0e1328; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding:8px; max-height:220px; overflow:auto; font-size:10px; text-align:left; }
     #rankBox h4 { margin:0 0 6px 0; color:var(--gold); font-size:10px; font-family:'Press Start 2P'; }
     #rankBox .rank-list { margin:0; padding-left:18px; list-style: decimal; }
-    #rankBox .rank-list li { margin: 2px 0; }
+    #rankBox .rank-list li { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
+    #rankBox .r-crown { width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; }
     #rankBox .r-name { font-weight: 800; }
     #rankBox .r-score { font-variant-numeric: tabular-nums; }
     #rankBox .r-honor { /* 색상은 JS에서 동적으로 지정 */ }
@@ -212,7 +213,7 @@
         <option value="normal" selected>보통</option>
         <option value="hard">어려움</option>
       </select>
-      <!-- ✅ 추가: 랭킹 버튼 (난이도와 시작 사이) -->
+      <!-- ✅ 랭킹 버튼 -->
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -350,6 +351,16 @@
     } catch(e){ console.error("loadTop 실패", e); return []; }
   }
 
+  /* ====== 왕관 SVG ====== */
+  function crownSVG(fill='#FFD84D', stroke='#000'){
+    return `
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+        <path d="M3 8l4.5 4 4.5-7 4.5 7 4.5-4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8z" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+        <rect x="3" y="17" width="18" height="3" rx="1" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+      </svg>
+    `;
+  }
+
   // 🔧 수정: 조회만 할 때는 점수 제출하지 않도록 옵션 추가
   async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
@@ -357,8 +368,10 @@
 
     // 필요할 때만 아이디와 점수 제출
     let postErr = null;
+    let myName = (localStorage.getItem("playerName") || "").trim();
     if (opt.submit !== false) {
       const name = ensurePlayerName();
+      myName = name;
       try {
         const res = await submitScore(name, finalScore);
         if (res && res.ok === false && res.error) postErr = res.error;
@@ -370,13 +383,26 @@
     try { top = await loadTop(20); } catch(e) { console.error(e); }
 
     if (Array.isArray(top) && top.length > 0) {
-      const items = top.map((r) => {
+      const items = top.map((r, i) => {
         const score = Number(r.score || r.Score || 0);
-        const n = _escape(r.name || r.Name || '무명');
+        const nRaw = String(r.name || r.Name || '무명');
+        const nEsc = _escape(nRaw);
         const h = getHonor(score);
         const col = honorColor(h.level);
+
+        // 왕관 아이콘 (1~3위)
+        let crown = '';
+        if (i === 0) crown = crownSVG('#FFD84D');           // 금
+        else if (i === 1) crown = crownSVG('#C0C7D1');      // 은
+        else if (i === 2) crown = crownSVG('#D1925A');      // 동
+
+        // 내 아이디 노란색 강조
+        const isMe = myName && nRaw === myName;
+        const nameHtml = `<span class="r-name"${isMe ? ' style="color:#ffeb3b; font-weight:900;"' : ''}>${nEsc}</span>`;
+
         return `<li>
-                  <span class="r-name">${n}</span>
+                  ${crown ? `<span class="r-crown">${crown}</span>` : `<span class="r-crown" style="width:14px;height:14px;"></span>`}
+                  ${nameHtml}
                   <span class="r-sep"> — </span>
                   <span class="r-score">${score}</span>
                   <span class="r-dot"> · </span>
@@ -414,7 +440,7 @@
     const cd = document.getElementById('countdown');
     const cdNum = document.getElementById('countNum');
     const warn = document.getElementById('warning');
-    const showRankBtn = document.getElementById('showRank'); // ✅ 추가
+    const showRankBtn = document.getElementById('showRank'); // ✅
 
     const HOLES=9, ROWS=3, COLS=3;
     const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
@@ -447,6 +473,11 @@
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
+
+    // ===== 진동 유틸 =====
+    function vibrate(ms=500){
+      try { if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(ms); } catch(_) {}
+    }
 
     // Audio
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -735,6 +766,7 @@
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
       boostUntilLevel = level + 1;
+      vibrate(500); // ✅ 진동: WARNING 때 0.5초
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
@@ -783,7 +815,9 @@
       if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
       if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
       clearAllMoles();
-      stopBgm(); showResult();
+      stopBgm();
+      vibrate(500); // ✅ 진동: 게임오버 때 0.5초
+      showResult();
     }
     function hardClearTimers(){
       if(countdownTimer){ clearInterval(countdownTimer); countdownTimer=null; }
@@ -860,7 +894,7 @@
       if(m) stopBgm(); else if(isPlaying) startBgm();
     });
 
-    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP20 조회
+    // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP20 조회 (내 아이디 강조 포함)
     showRankBtn.addEventListener('click', ()=>{
       resModal.classList.remove('hidden');
       showRanking(0, {submit:false});

@@ -155,11 +155,17 @@
     /* 콤보 HUD (우상단) */
     #comboHud {
       position: absolute; right: 10px; top: 6px; z-index: 20;
-      font-family: 'Press Start 2P'; font-size: 10px; color: var(--red);
-      text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,59,59,.45);
+      font-family: 'Press Start 2P'; font-size: 10px;
+      color: #fff; /* ✅ 기본 흰색 (50 전) */
+      text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,255,255,.35);
       display: none;
     }
     #comboHud.active { display: block; }
+    /* 버닝 시 노란색 */
+    #comboHud.burning {
+      color: var(--gold);
+      text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,216,77,.55);
+    }
 
     /* 흔들림 */
     .shake { animation: shake .3s both; }
@@ -245,7 +251,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">1.9</label>
+      <label for="version">2.0</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -757,7 +763,10 @@
     function setBurning(on){
       if(on === burning) return;
       burning = on;
-      burn.classList.toggle('hidden', !burning);
+      document.getElementById('burning').classList.toggle('hidden', !burning);
+      // ✅ 콤보 HUD 색상 토글
+      if (burning) comboHud.classList.add('burning');
+      else comboHud.classList.remove('burning');
       if(burning) burningSound();
     }
 
@@ -766,8 +775,11 @@
       if(combo>=2 && comboAlive){
         comboHud.textContent = `x${combo} COMBO`;
         comboHud.classList.add('active');
+        // 50 콤보 미만은 흰색, 50 이상은 노란색(버닝 클래스가 색상 바꿔줌)
+        if (combo >= 50) comboHud.classList.add('burning');
+        else comboHud.classList.remove('burning');
       }else{
-        comboHud.classList.remove('active');
+        comboHud.classList.remove('active','burning');
         comboHud.textContent = '';
       }
     }
@@ -862,6 +874,7 @@
     });
 
     // ✅ 입력 처리 (일시정지 시 입력 무시) + 허공 터치도 miss 처리
+    // 1) 기본: 보드 내부 처리
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
       const hole=e.target.closest('.hole');
@@ -886,6 +899,31 @@
         miss();
       }
     });
+
+    // 2) 보드 영역 "허공" 탭 보강: 캡처 단계에서 좌표로 판정
+    document.addEventListener('pointerdown', (e)=>{
+      if(!isPlaying || isPaused) return;
+
+      // UI/모달/버튼 영역은 제외
+      const exclude = e.target.closest('.controls, .overlay, .modal, button, input, select, textarea, label');
+      if (exclude) return;
+
+      const br = board.getBoundingClientRect();
+      const x = e.clientX, y = e.clientY;
+      const insideBoard = x>=br.left && x<=br.right && y>=br.top && y<=br.bottom;
+      if(!insideBoard) return;
+
+      // 이미 위의 보드 핸들러에서 처리될 수도 있으니,
+      // "탭 대상이 활성 두더지"가 아니면 miss로 강제 처리
+      const hole = e.target.closest('.hole');
+      if (hole) {
+        const mole = hole.firstChild;
+        const idx = mole ? Number(mole.dataset.idx) : -1;
+        if (idx>=0 && upMap.has(idx)) return; // 활성 두더지면 정상 처리(위 핸들러가 잡음)
+      }
+      // 여기 오면 허공/비활성 → miss
+      miss();
+    }, true);
 
     function beginCountdown(cb){
       if(isCounting) return;
@@ -915,7 +953,7 @@
       const p = paramsFromLevel(getHonor(score).level);
       let mean = p.meanInterval;
 
-      // 평시 기본 빈도(네가 이전에 쓰던 80% 보정 유지)
+      // 평시 기본 빈도(80% 보정의 역수로 계산돼 mean 감소)
       mean *= (1 / NORMAL_FREQ_MULT);
 
       // 레벨 가속(최대 2배 더 빠름)
@@ -1129,7 +1167,7 @@
     });
 
     // ✅ 랭킹 버튼: 점수 제출 없이 모달 열고 TOP100 조회
-    showRankBtn.addEventListener('click', ()=>{
+    document.getElementById('showRank').addEventListener('click', ()=>{
       resModal.classList.remove('hidden');
       showRanking(0, {submit:false});
     });

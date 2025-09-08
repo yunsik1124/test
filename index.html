@@ -461,34 +461,52 @@
     const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
-
-
-    /* ▼ 지뢰 기본 확률 하향 */
-    const MINE_BASE_CHANCE = 0.12; // 기존 0.22 → 0.12
+    /* ▼ 지뢰 기본 확률 하향 (유지) */
+    const MINE_BASE_CHANCE = 0.12;
 
     function paramsFromLevel(level){
       const s = (level-1)/(HONOR_LEVELS-1);
+      // 동시 최대 활성 수(하드캡, 그냥 상한만)
       const maxActive =
-        (s < 0.20) ? 1 :
-        (s < 0.45) ? 2 :
-        (s < 0.70) ? 3 :
-        (s < 0.90) ? 4 : 5;
+        (s < 0.20) ? 2 :  // 초반엔 한 번에 많이 안 뜨게
+        (s < 0.45) ? 3 :
+        (s < 0.70) ? 4 :
+        (s < 0.90) ? 5 : 6;
+
+      // 평균 스폰 간격(밀도). 포아송 평균 간격(밀리초)
+      // 레벨 오를수록 빨라짐.
+      const meanInterval = 900 - 600*s; // 900ms → 300ms
+
+      // 가끔 2마리 동시로 더 뽑는 확률
+      const pairProb = 0.12 + 0.28*s;   // 0.12 ~ 0.40
+
       return {
         drainMult: 1 + 1.0*s,
         gainMultHonor: Math.max(0.35, 1 - 0.6*s),
-        spawnInterval: 825 - 750*s,
-        maxActive
+        meanInterval,
+        maxActive,
+        pairProb
       };
     }
 
     // 상태
     let isPlaying=false, isCounting=false, score=0, gauge=100, combo=0, maxCombo=0, lastHit=0, lastActionAt=0;
-    let active=new Set();         // ⬅️ "올라와 있거나 내려가는 중"까지 점유 유지
+    let active=new Set();         // ⬅️ 해당 구멍만 점유
     let upMap=new Map(); // idx -> {to, type, missed}
-    let tickTimer=null, spawnTimeout=null, countdownTimer=null;
+    let tickTimer=null, countdownTimer=null;
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
+
+    // ==== (NEW) 포아송 기반 스케줄러 ====
+    let rafId = null;
+    let nextSpawnAt = 0;
+
+    // Exp(λ) 샘플링: mean(ms) → delay(ms)
+    function randExp(mean){
+      const u = Math.random();
+      return -Math.log(1-u) * mean;
+    }
 
     // Audio
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
@@ -556,12 +574,6 @@
       hole.appendChild(mole); board.appendChild(hole);
       holes.push(hole);
     }
-    const idxToRC = (i)=>({ r: Math.floor(i/COLS), c: i%COLS });
-    function isAdjacentToActive(idx){
-      const {r,c}=idxToRC(idx);
-      for(const a of active){ const {r:ar,c:ac}=idxToRC(a); if(Math.abs(r-ar)<=1 && Math.abs(c-ac)<=1) return true; }
-      return false;
-    }
 
     function hpChanceByGauge(g){
       if(g > 50) return 0.0;
@@ -569,32 +581,36 @@
       return 0.80;
     }
 
+    // === 한 마리 스폰 (같은 구멍만 중복 금지, 인접 제한 제거) ===
     function spawnOne(){
       if(!isPlaying) return;
+
+      // 여유 구멍
       const free=[]; for(let i=0;i<HOLES;i++) if(!active.has(i)) free.push(i);
       if(!free.length) return;
 
-      let candidates=free.filter(i=>!isAdjacentToActive(i)); if(!candidates.length) candidates=free;
-      const idx=candidates[Math.floor(Math.random()*candidates.length)];
+      // 랜덤 구멍 선택
+      const idx=free[Math.floor(Math.random()*free.length)];
       const mole=holes[idx].firstChild;
 
-      const h=getHonor(score).level;
+      const hLevel=getHonor(score).level;
 
+      // 타입 결정
       let tkey=null;
       const hpChance = hpChanceByGauge(gauge);
       if(Math.random() < hpChance){ tkey = 'hp'; }
-      // ⬇⬇⬇ 트로피(레벨업) 2배 상향: 0.05 -> 0.10 (초기 구간만)
-      if(!tkey && h <= 5 && !spawnedLv && Math.random() < 0.10){
+      if(!tkey && hLevel <= 5 && !spawnedLv && Math.random() < 0.10){
         tkey = 'levelup'; spawnedLv = true;
       }
       if(!tkey){
-        const isMine = Math.random() < MINE_BASE_CHANCE; // ▼ 지뢰 확률 하향 반영
+        const isMine = Math.random() < MINE_BASE_CHANCE;
         tkey = isMine ? 'mine' : normalTypes[Math.floor(Math.random()*normalTypes.length)];
       }
 
+      // 활성 처리
       active.add(idx);
       mole.dataset.type = tkey;
-      mole.dataset.wasHit = '0';   // ✅ 히트 여부 초기화
+      mole.dataset.wasHit = '0';
       mole.classList.add('up');
 
       let tag=mole.querySelector('.labelText');
@@ -605,53 +621,31 @@
       upMap.set(idx,{to, type:tkey, missed:true});
     }
 
-    function spawnLoop(){
-      if(!isPlaying) return;
-      const {level}=getHonor(score);
-      const p=paramsFromLevel(level);
-      let maxActive=p.maxActive;
-      let interval=Math.max(120, Math.floor(p.spawnInterval));
-
-      // 레벨 경고 부스터
-      if(level < boostUntilLevel){ interval = Math.max(80, Math.floor(interval/3)); maxActive = Math.min(6, maxActive+1); }
-
-
-
-      const need=Math.max(0, maxActive - active.size);
-      for(let n=0;n<need;n++) spawnOne();
-      spawnTimeout=setTimeout(spawnLoop, interval);
-    }
-
-    // ⬇⬇⬇ 겹침 방지: active 삭제를 transitionend 후로 지연
+    // ⬇⬇⬇ 같은 구멍만 겹침 금지: 내려가는 애니 끝난 뒤 active 해제
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
       if(entry){ clearTimeout(entry.to); }
 
       const wasHit = mole.dataset.wasHit === '1';
-      mole.classList.remove('up');  // 내려가기 시작 (여기서 바로 active 해제하지 않음)
+      mole.classList.remove('up');
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
 
-        // 라벨 제거
         const label=mole.querySelector('.labelText'); if(label) label.remove();
 
-        // 자동 미스 처리: 정상 두더지이고, 실제 히트가 없었을 때만 miss
         if (auto && entry && entry.missed && NORMAL_TYPES.has(entry.type) && !wasHit) {
           miss();
         }
-        // 특수아이템 자동 종료 시 콤보 유지(히트 안했어도 유지) — 콤보 깨지지 않게 lastHit만 갱신
         if (auto && entry && SPECIAL_TYPES.has(entry.type) && !wasHit) {
-          lastHit = performance.now();
+          lastHit = performance.now(); // 특수아이템 놓쳐도 콤보 유지
         }
 
-        // 자원 정리
         active.delete(idx);
         if (entry) upMap.delete(idx);
       };
 
-      // 내려가는 애니 끝난 후 정리
       mole.addEventListener('transitionend', finalize, { once: true });
     }
 
@@ -715,7 +709,7 @@
       afterLevelCheck();
     }
 
-    /* ▼ 콤보 판정 윈도우 살짝 완화(1400→1800ms) 및 특수아이템 로직 보강 */
+    /* ▼ 콤보 판정 윈도우 완화 유지 */
     const COMBO_WINDOW_MS = 1800;
 
     function hitNormal(idx,mole){
@@ -734,13 +728,13 @@
       score+=pts;
 
       const entry=upMap.get(idx); if(entry) entry.missed=false;
-      mole.dataset.wasHit = '1'; // ✅ 성공 터치 마킹
+      mole.dataset.wasHit = '1';
       afterLevelCheck();
 
       hitChime(); showComboToast(mole,combo); hide(idx);
     }
     function hitMine(idx,mole){
-      const now=performance.now(); lastActionAt=now; combo=0; // 지뢰는 콤보 끊김
+      const now=performance.now(); lastActionAt=now; combo=0;
       setGauge(gauge-35);
       const entry=upMap.get(idx); if(entry) entry.missed=false;
       mole.dataset.wasHit = '1';
@@ -828,12 +822,40 @@
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
+    // ==== (NEW) 포아송 스케줄러 틱 ====
+    function scheduleNext(now){
+      const { meanInterval } = paramsFromLevel(getHonor(score).level);
+      let mean = meanInterval;
+
+      // 레벨 경고 부스터 시 조금 더 촘촘히
+      if(getHonor(score).level < boostUntilLevel){
+        mean *= 0.5;
+      }
+
+      nextSpawnAt = now + randExp(mean);
+    }
+
+    function spawnTick(now){
+      // 상한(동시 활성) 체크
+      const { maxActive, pairProb } = paramsFromLevel(getHonor(score).level);
+
+      if(now >= nextSpawnAt){
+        if(active.size < maxActive){
+          spawnOne();
+          // 확률적으로 한 번 더 (쌍 스폰)
+          if(Math.random() < pairProb && active.size < maxActive){
+            spawnOne();
+          }
+        }
+        scheduleNext(now);
+      }
+    }
+
     function realStart(){
       isPlaying=true; score=0; combo=0; maxCombo=0; gauge=100;
       prevLevel=getHonor(score).level; boostUntilLevel=0;
       spawnedLv=false;
 
-     
       updateTrophy(); updateGaugeColor(); startBgm(); lastActionAt=performance.now();
 
       const dt=0.1;
@@ -846,8 +868,16 @@
         setGauge(gauge - drain*dt);
       }, dt*1000);
 
-      spawnOne();
-      spawnLoop();
+      // 첫 스폰 예약 및 루프 시작
+      const now = performance.now();
+      scheduleNext(now);
+
+      function loop(ts){
+        if(!isPlaying){ rafId=null; return; }
+        spawnTick(ts);
+        rafId = requestAnimationFrame(loop);
+      }
+      rafId = requestAnimationFrame(loop);
 
       startBtn.disabled=true; if(diffSel) diffSel.disabled=true;
       resetBtn.disabled=false;
@@ -872,17 +902,16 @@
       if(!isPlaying) return;
       isPlaying=false;
       if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
-      if(spawnTimeout){ clearTimeout(spawnTimeout); spawnTimeout=null; }
+      if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
       clearAllMoles();
       stopBgm();
       showResult();
     }
     function hardClearTimers(){
       if(countdownTimer){ clearInterval(countdownTimer); countdownTimer=null; }
-      if(tickTimer){ clearInterval(tickTimer); }
-      if(spawnTimeout){ clearTimeout(spawnTimeout); }
+      if(tickTimer){ clearInterval(tickTimer); tickTimer=null; }
+      if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
       upMap.forEach(e=>clearTimeout(e.to)); upMap.clear();
-      tickTimer=null; spawnTimeout=null;
     }
     function reset(){
       hardClearTimers();
@@ -893,7 +922,6 @@
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
       spawnedLv=false;
-      initialBoostUntil = 0;
 
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; if(diffSel) diffSel.disabled=false;
@@ -964,7 +992,3 @@
 </script>
 </body>
 </html>
-
-
-
-

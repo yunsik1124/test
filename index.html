@@ -620,8 +620,8 @@
       // ★ 초기 부스터 (시작 후 12초간)
       const nowTs = performance.now();
       if(nowTs < initialBoostUntil){
-        interval = Math.max(70, Math.floor(interval * 0.55));    // 더 촘촘히
-        maxActive = Math.max(maxActive, 2 + Math.floor((initialBoostUntil - nowTs)/4000)); // 초반 동시 3~4개까지
+        interval = Math.max(70, Math.floor(interval * 0.75));    // 더 촘촘히
+        maxActive = Math.max(maxActive, 1 + Math.floor((initialBoostUntil - nowTs)/4000)); // 초반 동시 3~4개까지
       }
 
       const need=Math.max(0, maxActive - active.size);
@@ -973,3 +973,4 @@
 </script>
 </body>
 </html>
+

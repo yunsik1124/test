@@ -321,8 +321,8 @@
   function applyBestHonorColor(){
     const el = document.getElementById('bestLocalHonor');
     const txt = el.textContent || '';
-    const m = txt.match(/Lv\.(\d+)/);
-    const lv = m ? parseInt(m[1],10) : 1;
+    theMatch = txt.match(/Lv\.(\d+)/);
+    const lv = theMatch ? parseInt(theMatch[1],10) : 1;
     el.style.color = honorColor(lv);
   }
 
@@ -468,13 +468,12 @@
       const s = (level-1)/(HONOR_LEVELS-1);
       // 동시 최대 활성 수(하드캡, 그냥 상한만)
       const maxActive =
-        (s < 0.20) ? 2 :  // 초반엔 한 번에 많이 안 뜨게
+        (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
         (s < 0.70) ? 4 :
         (s < 0.90) ? 5 : 6;
 
-      // 평균 스폰 간격(밀도). 포아송 평균 간격(밀리초)
-      // 레벨 오를수록 빨라짐.
+      // 평균 스폰 간격(밀도)
       const meanInterval = 900 - 600*s; // 900ms → 300ms
 
       // 가끔 2마리 동시로 더 뽑는 확률
@@ -502,7 +501,6 @@
     let rafId = null;
     let nextSpawnAt = 0;
 
-    // Exp(λ) 샘플링: mean(ms) → delay(ms)
     function randExp(mean){
       const u = Math.random();
       return -Math.log(1-u) * mean;
@@ -712,7 +710,22 @@
     /* ▼ 콤보 판정 윈도우 완화 유지 */
     const COMBO_WINDOW_MS = 1800;
 
+    /* ========= ✅ 더블탭 방지 핵심: 첫 탭 순간 소모 ========= */
+    function consumeTap(idx){
+      const entry = upMap.get(idx);
+      if(entry){
+        entry.missed = false;           // 미스 아님
+        clearTimeout(entry.to);         // 남은 업타임 타이머 제거
+        upMap.delete(idx);              // 이후 같은 구멍은 tappable=false
+      }
+    }
+
     function hitNormal(idx,mole){
+      // 더블탭 방지: 바로 소모
+      consumeTap(idx);
+      if(mole.dataset.wasHit === '1') return;
+      mole.dataset.wasHit = '1';
+
       const now=performance.now();
       const d={comboWindow:COMBO_WINDOW_MS, comboStep:0.10, gainMult:1};
       if(now-lastHit<=d.comboWindow) combo++; else combo=1;
@@ -727,35 +740,38 @@
       const pts = Math.round(ptsBase * comboScoreFactor(combo));
       score+=pts;
 
-      const entry=upMap.get(idx); if(entry) entry.missed=false;
-      mole.dataset.wasHit = '1';
       afterLevelCheck();
-
       hitChime(); showComboToast(mole,combo); hide(idx);
     }
     function hitMine(idx,mole){
+      consumeTap(idx);
+      if(mole.dataset.wasHit === '1') return;
+      mole.dataset.wasHit = '1';
+
       const now=performance.now(); lastActionAt=now; combo=0;
       setGauge(gauge-35);
-      const entry=upMap.get(idx); if(entry) entry.missed=false;
-      mole.dataset.wasHit = '1';
       app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300);
       mineBlast(); hide(idx);
     }
     function hitHp(idx,mole){
+      consumeTap(idx);
+      if(mole.dataset.wasHit === '1') return;
+      mole.dataset.wasHit = '1';
+
       const now=performance.now(); lastActionAt=now;
       if(now-lastHit<=COMBO_WINDOW_MS) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
       setGauge(gauge+50);
-      const entry=upMap.get(idx); if(entry) entry.missed=false;
-      mole.dataset.wasHit = '1';
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'gauge');
       hide(idx);
     }
     function hitLevelup(idx,mole){
+      consumeTap(idx);
+      if(mole.dataset.wasHit === '1') return;
+      mole.dataset.wasHit = '1';
+
       const now=performance.now(); lastActionAt=now;
       if(now-lastHit<=COMBO_WINDOW_MS) combo++; else combo=1; lastHit=now; maxCombo=Math.max(maxCombo,combo);
-      const entry=upMap.get(idx); if(entry) entry.missed=false;
-      mole.dataset.wasHit = '1';
       hitChime(); showComboToast(mole,combo);
       animateFly(mole,'trophy');
       bumpOneLevel();
@@ -769,7 +785,7 @@
       buzzStrong();
     }
 
-    // ✅ 더블탭/핀치 확대 억제
+    // ✅ 더블탭/핀치 확대 억제 (뷰 확대 방지)
     const EV_DOWN = window.PointerEvent ? 'pointerdown' : ('ontouchstart' in window ? 'touchstart' : 'mousedown');
     app.addEventListener(EV_DOWN, (e)=>{ if(e.cancelable) e.preventDefault(); }, { passive:false });
     let _lastTap=0;
@@ -782,12 +798,16 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 내려가는 중에도 히트 허용
+    // ✅ 내려가는 중에도 히트 허용 + 같은 두더지 더블탭 방지
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying)return;
       const hole=e.target.closest('.hole'); if(!hole) return;
       const mole=hole.firstChild;
       const idx = mole ? Number(mole.dataset.idx) : -1;
+
+      // 이미 처리된 두더지는 무시
+      if(mole && mole.dataset.wasHit === '1') return;
+
       const tappable = upMap.has(idx);
       if(mole && tappable){
         const t=mole.dataset.type;
@@ -836,13 +856,11 @@
     }
 
     function spawnTick(now){
-      // 상한(동시 활성) 체크
       const { maxActive, pairProb } = paramsFromLevel(getHonor(score).level);
 
       if(now >= nextSpawnAt){
         if(active.size < maxActive){
           spawnOne();
-          // 확률적으로 한 번 더 (쌍 스폰)
           if(Math.random() < pairProb && active.size < maxActive){
             spawnOne();
           }
@@ -992,3 +1010,4 @@
 </script>
 </body>
 </html>
+

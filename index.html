@@ -32,7 +32,7 @@
       --text: #e7eaf6;
       --muted: #96a0c3;
       --gold: #ffd84d;
-      --red: #ff5b5b;
+      --red: #ff3b3b;
       --hole: #0b0f20;
       --px: 4px;
       --tile-dirt: url('https://opengameart.org/sites/default/files/dirt_13.png');
@@ -149,8 +149,17 @@
     .mole .labelText { position:absolute; bottom: 8%; left:50%; transform: translateX(-50%); font-weight:900; font-size: 14px; color:#fff; font-family: 'Press Start 2P'; text-shadow: 0 1px 0 #000; pointer-events: none; }
 
     /* 콤보 토스트 */
-    .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: #fff; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P'; }
+    .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: var(--red); font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P'; }
     @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%,-12px) scale(.85) } 30% { opacity: 1; transform: translate(-50%,-26px) scale(1.1) } 70% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%,-42px) scale(1) } }
+
+    /* 콤보 HUD (우상단) */
+    #comboHud {
+      position: absolute; right: 10px; top: 6px; z-index: 20;
+      font-family: 'Press Start 2P'; font-size: 10px; color: var(--red);
+      text-shadow: 0 2px 0 #000, 0 0 10px rgba(255,59,59,.45);
+      display: none;
+    }
+    #comboHud.active { display: block; }
 
     /* 흔들림 */
     .shake { animation: shake .3s both; }
@@ -166,6 +175,12 @@
     .warn .txt { font-family: 'Press Start 2P'; font-size: 28px; color:#ff3333; text-shadow:0 0 8px rgba(255,0,0,.6), 0 2px 0 #000; animation: pulse 0.5s ease-in-out infinite alternate }
     @keyframes pulse { from{ transform: scale(0.98)} to{ transform: scale(1.04)} }
 
+    /* 🔥 버닝 오버레이 */
+    .burn { position: fixed; inset: 0; display:grid; place-items:center; z-index: 76; pointer-events:none }
+    .burn.hidden { display:none }
+    .burn .txt { font-family: 'Press Start 2P'; font-size: 28px; color:#ffa54d; text-shadow:0 0 10px rgba(255,165,77,.9), 0 2px 0 #000; animation: flame 0.5s ease-in-out infinite alternate }
+    @keyframes flame { from{ transform: scale(0.98) rotate(-1deg)} to{ transform: scale(1.04) rotate(1deg)} }
+
     .modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5,7,15,.55); backdrop-filter: blur(2px); transition: opacity .18s ease; z-index: 80 }
     .modal.hidden { opacity: 0; pointer-events: none }
     .modal-card { width: min(460px, 92vw); display: grid; gap: 10px }
@@ -179,7 +194,7 @@
     #rankBox { background:#0e1328; border: var(--px) solid #232a49; box-shadow: 0 0 0 calc(var(--px)) #000 inset; padding:8px; max-height:220px; overflow:auto; font-size:10px; text-align:left; }
     #rankBox h4 { margin:0 0 6px 0; color:var(--gold); font-size:10px; font-family:'Press Start 2P'; }
 
-    /* 리스트: 순위 번호를 직접 렌더링하므로 기본 마커 제거 */
+    /* 리스트 */
     #rankBox .rank-list { margin:0; padding:0; list-style: none; }
     #rankBox .rank-list li { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
 
@@ -188,7 +203,7 @@
     #rankBox .r-name { font-weight: 800; }
     #rankBox .r-score, #rankBox .r-level { font-variant-numeric: tabular-nums; }
 
-    /* 일시정지 상태 시 시각적 힌트(살짝 어둡게) */
+    /* 일시정지 마스크 */
     .paused-mask {
       position: absolute; inset: 0; border-radius: 2px;
       background: rgba(0,0,0,.18);
@@ -200,6 +215,7 @@
 <body>
   <div class="app" id="app">
     <div class="paused-mask"></div>
+    <div id="comboHud"></div>
 
     <!-- 상단: 아이디 줄 + 최고점수/명예 줄 -->
     <div id="bestLocal">
@@ -229,12 +245,10 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">1.8</label>
-      <!-- ✅ 랭킹 버튼 -->
+      <label for="version">1.9</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
-      <!-- ✅ 요청: 리셋과 사운드 사이 '일시정지/플레이' 토글 -->
       <button id="pause" disabled>일시정지</button>
       <button id="mute">🔊</button>
     </section>
@@ -243,6 +257,7 @@
   <!-- 오버레이/모달 -->
   <div id="countdown" class="overlay hidden"><div class="count-num" id="countNum">3</div></div>
   <div id="warning" class="warn hidden"><div class="txt">WARNING!</div></div>
+  <div id="burning" class="burn hidden"><div class="txt">BURNING!</div></div>
 
   <div id="result" class="modal hidden" aria-modal="true" role="dialog" aria-labelledby="resultTitle">
     <div class="modal-card panel">
@@ -385,7 +400,6 @@
     const box = document.getElementById("rankBox");
     box.innerHTML = "<h4>TOP100 랭킹</h4><div>불러오는 중...</div>";
 
-    // 필요할 때만 아이디와 점수 제출
     let postErr = null;
     let myName = (localStorage.getItem("playerName") || "").trim();
     if (opt.submit !== false) {
@@ -397,7 +411,6 @@
       } catch(e) { postErr = String(e); }
     }
 
-    // 랭킹 조회 (100개)
     let top = [];
     try { top = await loadTop(100); } catch(e) { console.error(e); }
 
@@ -410,13 +423,11 @@
         const h = getHonor(score);
         const col = honorColor(h.level);
 
-        // 왕관 (1~3위)
         let crown = '';
         if (i === 0) crown = crownSVG('#FFD84D');
         else if (i === 1) crown = crownSVG('#C0C7D1');
         else if (i === 2) crown = crownSVG('#D1925A');
 
-        // 내 아이디 강조
         const isMe = myName && nRaw === myName;
         const nameHtml = `<span class="r-name"${isMe ? ' style="color:#ffeb3b; font-weight:900;"' : ''}>${nEsc}</span>`;
 
@@ -464,10 +475,15 @@
     const cd = document.getElementById('countdown');
     const cdNum = document.getElementById('countNum');
     const warn = document.getElementById('warning');
+    const burn = document.getElementById('burning');
     const showRankBtn = document.getElementById('showRank');
+    const comboHud = document.getElementById('comboHud');
 
     const HOLES=9, ROWS=3, COLS=3;
-    const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+
+    /* ✅ 유지시간(요청값): 노란 900ms / 파란 700ms / 빨간 400ms */
+    const typeCfg={yellow:{up:900},blue:{up:700},red:{up:400},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
     const normalTypes=['yellow','blue','blue','red'];
@@ -478,18 +494,27 @@
     const MINE_BASE_CHANCE = 0.20;
 
     function paramsFromLevel(level){
-      const s = (level-1)/(HONOR_LEVELS-1);
+      const s = (level-1)/(HONOR_LEVELS-1); // 0~1 (Lv1~Lv50)
       const maxActive =
         (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
         (s < 0.70) ? 4 :
         (s < 0.90) ? 5 : 6;
+
+      // 기본 간격(낮을수록 빠름)
       const meanInterval = 900 - 600*s; // 900ms → 300ms
+
+      // 레벨이 오를수록 2배까지 스폰 가속 (요청: 50레벨에 가까워질수록 빈도 2배)
+      const levelSpawnBoost = 1 + s; // 1.0 → 2.0
+
       const pairProb = 0.12 + 0.28*s;   // 0.12 ~ 0.40
+
       return {
         drainMult: 1 + 1.0*s,
-        gainMultHonor: Math.max(0.35, 1 - 0.6*s),
+        // ✅ 게이지 획득량: 50레벨 근접할수록 더 많이 차도록 유지(상향 곡선)
+        gainMultHonor: 1 + 2.0*s, // 1.0 → 3.0
         meanInterval,
+        levelSpawnBoost,
         maxActive,
         pairProb
       };
@@ -497,7 +522,7 @@
 
     // ==== 스폰 빈도 조절 상수 ====
     const NORMAL_FREQ_MULT = 0.8;   // 평상시 80%
-    const WARN_FREQ_MULT   = 1.5;   // 워닝 1.5배
+    const WARN_FREQ_MULT   = 2.0;   // ✅ 워닝 2배
 
     // 상태
     let isPlaying=false, isCounting=false, isPaused=false;
@@ -513,6 +538,9 @@
 
     // ✅ 콤보 상태: "직전 끊김 여부"
     let comboAlive=false;
+
+    // 🔥 버닝 상태
+    let burning=false;
 
     function randExp(mean){ const u=Math.random(); return -Math.log(1-u)*mean; }
 
@@ -533,6 +561,12 @@
     function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
     function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
     function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
+
+    // 🔥 버닝 효과음(긍정적)
+    function burningSound(){
+      if(muted)return; createCtx();
+      [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
+    }
 
     // BGM
     let bgmTimer=null;
@@ -719,16 +753,38 @@
       }
     }
 
-    // ==== 콤보: "직전 끊김 여부" 기반 ====
+    // 🔥 버닝 토글
+    function setBurning(on){
+      if(on === burning) return;
+      burning = on;
+      burn.classList.toggle('hidden', !burning);
+      if(burning) burningSound();
+    }
+
+    // ==== 콤보: "직전 끊김 여부" 기반 + HUD ====
+    function updateComboHud(){
+      if(combo>=2 && comboAlive){
+        comboHud.textContent = `x${combo} COMBO`;
+        comboHud.classList.add('active');
+      }else{
+        comboHud.classList.remove('active');
+        comboHud.textContent = '';
+      }
+    }
     function onComboHit(mole){
       if (comboAlive) combo++;
       else { combo = 1; comboAlive = true; }
       maxCombo = Math.max(maxCombo, combo);
+      // 50콤보 달성 시 버닝 발동
+      if(combo === 50) setBurning(true);
+      updateComboHud();
       hitChime(); showComboToast(mole, combo);
     }
     function breakCombo(){
       combo = 0;
       comboAlive = false;
+      setBurning(false);     // 콤보 끊기면 버닝 해제
+      updateComboHud();      // HUD 숨김
     }
 
     function hitNormal(idx,mole){
@@ -740,7 +796,8 @@
 
       const tkey=mole.dataset.type;
       const honor=paramsFromLevel(getHonor(score).level);
-      const gain=baseGain[tkey]*honor.gainMultHonor*(1+Math.max(0,combo-1)*0.10);
+      let gain=baseGain[tkey]*honor.gainMultHonor*(1+Math.max(0,combo-1)*0.10);
+      if(burning) gain*=3; // 🔥 버닝 중 3배
       setGauge(gauge+gain);
 
       const ptsBase=typePoints[tkey];
@@ -766,7 +823,9 @@
       mole.dataset.wasHit = '1';
 
       onComboHit(mole);
-      setGauge(gauge+50);
+      let val = 50;
+      if(burning) val*=3; // 버닝 보정
+      setGauge(gauge+val);
       animateFly(mole,'gauge');
       hide(idx);
     }
@@ -802,10 +861,14 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    // ✅ 입력 처리 (일시정지 시 입력 무시)
+    // ✅ 입력 처리 (일시정지 시 입력 무시) + 허공 터치도 miss 처리
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
-      const hole=e.target.closest('.hole'); if(!hole) return;
+      const hole=e.target.closest('.hole');
+
+      // 보드의 빈칸(그리드 갭) 눌러도 miss
+      if(!hole){ miss(); return; }
+
       const mole=hole.firstChild;
       const idx = mole ? Number(mole.dataset.idx) : -1;
 
@@ -819,6 +882,7 @@
         else if(t==='levelup') hitLevelup(idx,mole);
         else                   hitNormal(idx,mole);
       } else {
+        // 구멍은 눌렀지만 두더지가 없거나 이미 내려감 → miss
         miss();
       }
     });
@@ -839,6 +903,7 @@
       }, 1000);
     }
     function triggerWarning(level){
+      // 경고 플래시 + 다음 레벨까지 스폰 가속
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
       boostUntilLevel = level + 1;
@@ -847,13 +912,21 @@
 
     // ==== 포아송 스케줄러 ====
     function scheduleNext(now){
-      const { meanInterval } = paramsFromLevel(getHonor(score).level);
-      let mean = meanInterval;
+      const p = paramsFromLevel(getHonor(score).level);
+      let mean = p.meanInterval;
+
+      // 평시 기본 빈도(네가 이전에 쓰던 80% 보정 유지)
       mean *= (1 / NORMAL_FREQ_MULT);
+
+      // 레벨 가속(최대 2배 더 빠름)
+      mean /= p.levelSpawnBoost;
+
+      // WARNING 가속(요청: 2배)
       if(getHonor(score).level < boostUntilLevel){
-        mean = meanInterval / WARN_FREQ_MULT;
+        mean = mean / WARN_FREQ_MULT;
       }
-      if(active.size === 0){ mean *= 0.75; }
+
+      if(active.size === 0){ mean *= 0.75; } // 첫 마리 출현 가속
       const gap = randExp(mean);
       const MAX_GAP = 600;
       nextSpawnAt = now + Math.min(gap, MAX_GAP);
@@ -876,9 +949,9 @@
 
     function realStart(){
       isPlaying=true; isPaused=false; score=0; combo=0; maxCombo=0; gauge=100;
-      prevLevel=getHonor(score).level; boostUntilLevel=0; spawnedLv=false; comboAlive=false;
+      prevLevel=getHonor(score).level; boostUntilLevel=0; spawnedLv=false; comboAlive=false; setBurning(false);
 
-      updateTrophy(); updateGaugeColor(); startBgm();
+      updateTrophy(); updateGaugeColor(); startBgm(); updateComboHud();
 
       const dt=0.1;
       if(tickTimer){ clearInterval(tickTimer); }
@@ -928,6 +1001,7 @@
       if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
       clearAllMoles();
       stopBgm();
+      setBurning(false);
       pauseBtn.disabled=true; pauseBtn.textContent='일시정지';
       app.classList.remove('is-paused');
       showResult();
@@ -946,7 +1020,7 @@
       clearAllMoles();
 
       gauge=100; score=0; combo=0; maxCombo=0; prevLevel=1; boostUntilLevel=0;
-      spawnedLv=false; comboAlive=false;
+      spawnedLv=false; comboAlive=false; setBurning(false); updateComboHud();
 
       updateTrophy(); updateGaugeColor();
       startBtn.disabled=false; if(diffSel) diffSel.disabled=false;
@@ -1004,12 +1078,8 @@
       app.classList.add('is-paused');
       stopBgm();
 
-      // 스폰 루프/게이지 소모 정지
-      if(tickTimer){ /* 남겨두되 핸들러에서 isPaused 체크 */ }
-      // hide 타이머 일시정지: 남은시간 계산은 단순화 → 재개 시 새 타임아웃 부여
       upMap.forEach((e, idx)=>{
         try{ clearTimeout(e.to); }catch(_){}
-        // 'paused' 마커만 남김
         upMap.set(idx, { ...e, to: null, paused: true });
       });
 
@@ -1021,7 +1091,6 @@
       app.classList.remove('is-paused');
       if(!muted) startBgm();
 
-      // 스폰 스케줄 재설정
       scheduleNext(performance.now());
       if(!rafId){
         const loop = (ts)=>{
@@ -1032,7 +1101,6 @@
         rafId = requestAnimationFrame(loop);
       }
 
-      // 올라와 있던 두더지들 다시 내려가도록 타임아웃 재부여(대략값)
       upMap.forEach((e, idx)=>{
         if(e && e.paused){
           const tkey = e.type || 'yellow';

@@ -252,7 +252,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">2.2</label>
+      <label for="version">2.3</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -674,7 +674,7 @@
       if(entry){ clearTimeout(entry.to); }
 
       const wasHit = mole.dataset.wasHit === '1';
-      mole.classList.remove('up');
+      mole.classList.remove('up'); // 내려가기 시작 (이제부터도 터치 허용; upMap 삭제 전까지 입력 허용)
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
@@ -685,7 +685,7 @@
           miss();
         }
         active.delete(idx);
-        if (entry) upMap.delete(idx);
+        if (entry) upMap.delete(idx); // 완전히 사라질 때 제거 → 아웃 동안 터치 허용
       };
 
       mole.addEventListener('transitionend', finalize, { once: true });
@@ -889,29 +889,27 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    /* ✅ 입력 처리 업데이트: 
-       - 성공 판정은 '구멍(.hole) 전체 영역'을 터치했을 때,
-         그 구멍의 두더지가 .up 상태이면 히트로 처리
-       - 구멍을 눌렀는데 .up이 아니면 miss
+    /* ✅ 입력 처리 업데이트:
+       - 터치/클릭 판정은 upMap 존재 여부를 기준으로 함
+         (등장 인/아웃 애니메이션 동안에도 upMap이 남아 있어 히트 가능)
+       - 구멍을 눌렀는데 해당 인덱스 upMap이 없으면 miss
     */
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
 
       const holeEl = e.target.closest('.hole');
       if(!holeEl){
-        // 보드 영역(그리드 갭 등) 눌렀다면 miss
         const insideBoard = !!e.target.closest('.board');
         if(insideBoard) miss();
         return;
       }
 
-      // 해당 구멍의 두더지
       const mole = holeEl.firstChild;
       const idx = Number(mole.dataset.idx || -1);
-      const isUp = mole.classList.contains('up');
+      const entryExists = upMap.has(idx);
 
-      if(idx<0 || !upMap.has(idx) || !isUp){
-        // 구멍은 눌렀지만 두더지가 없거나 시간이 끝난 경우 → miss
+      if(idx<0 || !entryExists){
+        // 구멍은 눌렀지만 스폰 윈도우가 아니면 miss
         miss();
         return;
       }
@@ -966,6 +964,8 @@
       if(!muted){ try{ new Audio('sound/buzzer.wav').play(); }catch(e){} }
     }
 
+    const isWarningActive = ()=> getHonor(score).level < boostUntilLevel;
+
     // ==== 포아송 스케줄러 ====
     function scheduleNext(now){
       const p = paramsFromLevel(getHonor(score).level);
@@ -974,7 +974,7 @@
       mean *= (1 / NORMAL_FREQ_MULT);
       mean /= p.levelSpawnBoost;
 
-      if(getHonor(score).level < boostUntilLevel){
+      if(isWarningActive()){
         mean = mean / WARN_FREQ_MULT;
       }
 
@@ -984,15 +984,34 @@
       nextSpawnAt = now + Math.min(gap, MAX_GAP);
     }
 
+    // 🔥 WARNING 배치 스폰 (2~9개 랜덤, 공간/상한 고려)
+    function spawnBatchDuringWarning(){
+      const { maxActive } = paramsFromLevel(getHonor(score).level);
+      const freeCount = 9 - active.size;
+      if(freeCount <= 0) return;
+
+      const want = Math.floor(Math.random()*8) + 2; // 2~9
+      const can = Math.max(0, Math.min(want, freeCount, maxActive - active.size));
+      for(let i=0;i<can;i++) spawnOne();
+    }
+
     function spawnTick(now){
       if(isPaused) return;
-      const { maxActive, pairProb } = paramsFromLevel(getHonor(score).level);
+      const p = paramsFromLevel(getHonor(score).level);
+      const { maxActive, pairProb } = p;
+
       if(now >= nextSpawnAt){
         if(active.size < maxActive){
-          spawnOne();
-          const bonusPair = (active.size === 1 && Math.random()<0.15) ? 1 : 0;
-          if((Math.random() < pairProb || bonusPair) && active.size < maxActive){
+          if(isWarningActive()){
+            // 배치 스폰
+            spawnBatchDuringWarning();
+          } else {
+            // 일반 스폰 + 페어 확률
             spawnOne();
+            const bonusPair = (active.size === 1 && Math.random()<0.15) ? 1 : 0;
+            if((Math.random() < pairProb || bonusPair) && active.size < maxActive){
+              spawnOne();
+            }
           }
         }
         scheduleNext(now);

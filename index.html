@@ -22,6 +22,8 @@
   <link rel="preload" as="image" href="images/bomb.png">
   <link rel="preload" as="image" href="images/hp.png">
   <link rel="preload" as="image" href="images/levelup.png">
+  <!-- 🔥 핵폭탄 이미지 프리로드 추가 -->
+  <link rel="preload" as="image" href="images/nuke.png">
 
   <style>
     :root {
@@ -147,6 +149,9 @@
     .mole[data-type="mine"]   { background-image:url('images/bomb.png'); }
     .mole[data-type="hp"]     { background-image:url('images/hp.png'); }
     .mole[data-type="levelup"]{ background-image:url('images/levelup.png'); }
+    /* 🔥 핵폭탄 이미지 */
+    .mole[data-type="nuke"]   { background-image:url('images/nuke.png'); }
+
     .mole .labelText { position:absolute; bottom: 8%; left:50%; transform: translateX(-50%); font-weight:900; font-size: 14px; color:#fff; font-family: 'Press Start 2P'; text-shadow: 0 1px 0 #000; pointer-events: none; }
 
     /* 콤보 토스트 */
@@ -252,7 +257,8 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">2.4</label>
+      <!-- 🔼 버전업 -->
+      <label for="version">2.5</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -283,7 +289,7 @@
 
 <script>
   /* 이미지 미리 로드 */
-  ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png"]
+  ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png","images/nuke.png"]
     .forEach(src => { const i = new Image(); i.src = src; });
 
   /* ===== 랭킹 서버 설정 ===== */
@@ -403,7 +409,7 @@
     `;
   }
 
-  // ✅ 랭킹 렌더: 순위 > (왕관) > 아이디 > 점수 > 레벨 > 명예(호칭)
+  // ✅ 랭킹 렌더
   async function showRanking(finalScore, opt={submit:true}){
     const box = document.getElementById("rankBox");
     box.innerHTML = "<h4>TOP100 랭킹</h4><div>불러오는 중...</div>";
@@ -490,22 +496,27 @@
     const HOLES=9, ROWS=3, COLS=3;
 
     /* ✅ 유지시간(히트 가능 구간): 노란 1100ms / 파란 900ms / 빨간 700ms */
-    const typeCfg={yellow:{up:1100},blue:{up:900},red:{up:700},mine:{up:900},hp:{up:900},levelup:{up:1000}};
+    const typeCfg={
+      yellow:{up:1100},
+      blue:{up:900},
+      red:{up:700},
+      mine:{up:900},
+      hp:{up:900},
+      levelup:{up:1000},
+      /* 🔥 핵폭탄도 지뢰와 동일 유지시간 */
+      nuke:{up:900}
+    };
 
     const baseGain={yellow:8,blue:11,red:15};
     const typePoints={yellow:1,blue:2,red:3,hp:0,levelup:0};
     const normalTypes=['yellow','blue','blue','red'];
-    const SPECIAL_TYPES = new Set(['mine','hp','levelup']);
+    const SPECIAL_TYPES = new Set(['mine','hp','levelup','nuke']);
     const NORMAL_TYPES  = new Set(['yellow','blue','red']);
 
     /* ▼ 지뢰 기본 확률 */
-    const MINE_BASE_CHANCE = 0.20;
+    const MINE_BASE_CHANCE = 0.20; // 스페셜(지뢰/핵폭탄) 전체 진입 확률
 
-    /* ====== 스폰 파라미터 (레벨 스케일 강화) ======
-       - 최대 동시 출현: 2 → 7 마리 범위
-       - 기본 간격: 900ms → (레벨 50 근접시) ~200ms대
-       - 레벨 가속 배수 강화
-    */
+    /* ====== 스폰 파라미터 (레벨 스케일 강화) ====== */
     function paramsFromLevel(level){
       const s = (level-1)/(50-1); // 0~1 (Lv1~Lv50)
 
@@ -515,14 +526,9 @@
         (s < 0.70) ? 5 :
         (s < 0.85) ? 6 : 7;
 
-      // 기본 간격(낮을수록 빠름): 최저 약 200ms대
       const meanInterval = Math.max(200, 900 - 700*s); // 900ms → ~200ms
-
-      // 레벨이 오를수록 최대 2.5배까지 스폰 가속
       const levelSpawnBoost = 1 + 1.5*s; // 1.0 → 2.5
-
-      // 한 틱에 2마리 이상 생길 확률
-      const pairProb = Math.min(0.75, 0.18 + 0.42*s);   // 0.18 ~ 0.60(최대 0.75 캡)
+      const pairProb = Math.min(0.75, 0.18 + 0.42*s);
 
       return {
         drainMult: 1 + 1.0*s,
@@ -534,14 +540,12 @@
       };
     }
 
-    // ==== 스폰 빈도 조절 상수 ====
-    const NORMAL_FREQ_MULT = 0.75;   // 평상시 75% 간격(=기존보다 더 빠르게)
-    const WARN_FREQ_MULT   = 2.6;    // WARNING 가속 배수 ↑ (동시 스폰과 함께 체감 강화)
+    const NORMAL_FREQ_MULT = 0.75;
+    const WARN_FREQ_MULT   = 2.6;
 
-    // 상태
     let isPlaying=false, isCounting=false, isPaused=false;
     let score=0, gauge=100, combo=0, maxCombo=0;
-    let active=new Set();         // 해당 구멍만 점유
+    let active=new Set();
     let upMap=new Map(); // idx -> {to, type, missed}
     let tickTimer=null, countdownTimer=null;
     let muted=false, audioCtx=null;
@@ -550,10 +554,7 @@
     let rafId = null;
     let nextSpawnAt = 0;
 
-    // ✅ 콤보 상태: "직전 끊김 여부"
     let comboAlive=false;
-
-    // 🔥 버닝 상태 + 텍스트표시 타이머 (표시는 2초)
     let burning=false;
     let burnTextTimer=null;
 
@@ -576,14 +577,11 @@
     function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
     function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
     function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
-
-    // 🔥 버닝 효과음(긍정적)
     function burningSound(){
       if(muted)return; createCtx();
       [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
     }
 
-    // BGM
     let bgmTimer=null;
     function startBgm(){ if(muted) return; createCtx(); stopBgm();
       const pattern=[440,554,659,554,440,440,554,659,740,659,554,494]; let i=0;
@@ -591,7 +589,6 @@
     }
     function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
 
-    // 엔딩 효과
     function noiseBurst(dur=0.15, vol=0.35){ if(muted)return; createCtx();
       const sr=audioCtx.sampleRate; const len=Math.floor(sr*dur);
       const buf=audioCtx.createBuffer(1,len,sr); const data=buf.getChannelData(0);
@@ -650,7 +647,7 @@
 
       const hLevel=getHonor(score).level;
 
-      // 타입 결정
+      // 타입 결정 (HP/LEVELUP 우선 → 스페셜(지뢰/핵폭탄) → 일반)
       let tkey=null;
       const hpChance = hpChanceByGauge(gauge);
       if(Math.random() < hpChance){ tkey = 'hp'; }
@@ -658,8 +655,13 @@
         tkey = 'levelup'; spawnedLv = true;
       }
       if(!tkey){
-        const isMine = Math.random() < MINE_BASE_CHANCE;
-        tkey = isMine ? 'mine' : normalTypes[Math.floor(Math.random()*normalTypes.length)];
+        // 스페셜 진입 확률: MINE_BASE_CHANCE
+        if(Math.random() < MINE_BASE_CHANCE){
+          // 🔥 핵폭탄은 지뢰의 1/5 빈도로 등장 (비율 1 : 4)
+          tkey = (Math.random() < 0.20) ? 'nuke' : 'mine';
+        } else {
+          tkey = normalTypes[Math.floor(Math.random()*normalTypes.length)];
+        }
       }
 
       active.add(idx);
@@ -669,7 +671,11 @@
 
       let tag=mole.querySelector('.labelText');
       if(!tag){ tag=document.createElement('div'); tag.className='labelText'; mole.appendChild(tag); }
-      tag.textContent = (tkey==='mine' ? '지뢰' : tkey==='hp' ? 'HP' : tkey==='levelup' ? 'LEVEL UP!' : '');
+      tag.textContent =
+        (tkey==='mine' ? '지뢰' :
+         tkey==='hp' ? 'HP' :
+         tkey==='levelup' ? 'LEVEL UP!' :
+         tkey==='nuke' ? '핵폭탄' : '');
 
       const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
       upMap.set(idx,{to, type:tkey, missed:true});
@@ -872,6 +878,20 @@
       showLevelUpText();
       hide(idx);
     }
+    /* 🔥 핵폭탄: 터치 시 즉시 게임오버 */
+    function hitNuke(idx,mole){
+      consumeTap(idx);
+      if(mole.dataset.wasHit === '1') return;
+      mole.dataset.wasHit = '1';
+
+      breakCombo();
+      app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 400);
+      mineBlast();
+      hide(idx);
+      // 즉시 종료
+      endGame();
+    }
+
     function miss(){
       breakCombo();
       setGauge(gauge-22);
@@ -893,7 +913,7 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    /* ✅ 입력 처리: upMap 존재 여부로 판정 */
+    /* ✅ 입력 처리 */
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
 
@@ -917,6 +937,7 @@
       if(t==='mine')         hitMine(idx,mole);
       else if(t==='hp')      hitHp(idx,mole);
       else if(t==='levelup') hitLevelup(idx,mole);
+      else if(t==='nuke')    hitNuke(idx,mole);  // 🔥 핵폭탄 처리
       else                   hitNormal(idx,mole);
     });
 
@@ -950,7 +971,6 @@
       }, 1000);
     }
     function triggerWarning(level){
-      // 경고 플래시 + 다음 레벨까지 스폰 가속
       warn.classList.remove('hidden');
       setTimeout(()=> warn.classList.add('hidden'), 2000);
       boostUntilLevel = level + 1;
@@ -983,8 +1003,8 @@
       const freeCount = 9 - active.size;
       if(freeCount <= 0) return;
 
-      const minNeed = Math.max(0, 3 - active.size);        // ⇦ 최소 동시 3마리 보장
-      const want = Math.floor(Math.random()*7) + 3;         // 3~9 마리 랜덤
+      const minNeed = Math.max(0, 3 - active.size);
+      const want = Math.floor(Math.random()*7) + 3; // 3~9
       const can = Math.max(minNeed, Math.min(want, freeCount, maxActive - active.size));
 
       for(let i=0;i<can;i++) spawnOne();
@@ -998,10 +1018,8 @@
       if(now >= nextSpawnAt){
         if(active.size < maxActive){
           if(isWarningActive()){
-            // 배치 스폰 (최소 3마리 동시 보장)
             spawnBatchDuringWarning();
           } else {
-            // 일반 스폰 + 페어 확률
             spawnOne();
             const bonusPair = (active.size === 1 && Math.random()<0.15) ? 1 : 0;
             if((Math.random() < pairProb || bonusPair) && active.size < maxActive){

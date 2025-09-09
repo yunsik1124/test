@@ -252,7 +252,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">2.3</label>
+      <label for="version">2.4</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -501,21 +501,28 @@
     /* ▼ 지뢰 기본 확률 */
     const MINE_BASE_CHANCE = 0.20;
 
+    /* ====== 스폰 파라미터 (레벨 스케일 강화) ======
+       - 최대 동시 출현: 2 → 7 마리 범위
+       - 기본 간격: 900ms → (레벨 50 근접시) ~200ms대
+       - 레벨 가속 배수 강화
+    */
     function paramsFromLevel(level){
       const s = (level-1)/(50-1); // 0~1 (Lv1~Lv50)
+
       const maxActive =
         (s < 0.20) ? 2 :
         (s < 0.45) ? 3 :
-        (s < 0.70) ? 4 :
-        (s < 0.90) ? 5 : 6;
+        (s < 0.70) ? 5 :
+        (s < 0.85) ? 6 : 7;
 
-      // 기본 간격(낮을수록 빠름)
-      const meanInterval = 900 - 600*s; // 900ms → 300ms
+      // 기본 간격(낮을수록 빠름): 최저 약 200ms대
+      const meanInterval = Math.max(200, 900 - 700*s); // 900ms → ~200ms
 
-      // 레벨이 오를수록 2배까지 스폰 가속
-      const levelSpawnBoost = 1 + s; // 1.0 → 2.0
+      // 레벨이 오를수록 최대 2.5배까지 스폰 가속
+      const levelSpawnBoost = 1 + 1.5*s; // 1.0 → 2.5
 
-      const pairProb = 0.12 + 0.28*s;   // 0.12 ~ 0.40
+      // 한 틱에 2마리 이상 생길 확률
+      const pairProb = Math.min(0.75, 0.18 + 0.42*s);   // 0.18 ~ 0.60(최대 0.75 캡)
 
       return {
         drainMult: 1 + 1.0*s,
@@ -528,8 +535,8 @@
     }
 
     // ==== 스폰 빈도 조절 상수 ====
-    const NORMAL_FREQ_MULT = 0.8;   // 평상시 80%
-    const WARN_FREQ_MULT   = 2.0;   // WARNING 2배
+    const NORMAL_FREQ_MULT = 0.75;   // 평상시 75% 간격(=기존보다 더 빠르게)
+    const WARN_FREQ_MULT   = 2.6;    // WARNING 가속 배수 ↑ (동시 스폰과 함께 체감 강화)
 
     // 상태
     let isPlaying=false, isCounting=false, isPaused=false;
@@ -674,7 +681,7 @@
       if(entry){ clearTimeout(entry.to); }
 
       const wasHit = mole.dataset.wasHit === '1';
-      mole.classList.remove('up'); // 내려가기 시작 (이제부터도 터치 허용; upMap 삭제 전까지 입력 허용)
+      mole.classList.remove('up'); // 내려가기 시작
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
@@ -685,7 +692,7 @@
           miss();
         }
         active.delete(idx);
-        if (entry) upMap.delete(idx); // 완전히 사라질 때 제거 → 아웃 동안 터치 허용
+        if (entry) upMap.delete(idx);
       };
 
       mole.addEventListener('transitionend', finalize, { once: true });
@@ -698,7 +705,6 @@
       const div=document.createElement('div');
       div.className='comboToast';
       div.textContent=`x${combo} COMBO!`;
-      // ✅ x2~x49: 화이트, x50~: 골드
       div.style.color = (combo >= 50) ? 'var(--gold)' : '#fff';
       div.style.textShadow = (combo >= 50)
         ? '0 2px 0 #000, 0 0 10px rgba(255,216,77,.6)'
@@ -772,11 +778,9 @@
       if(on === burning) return;
       burning = on;
 
-      // HUD 색 토글
       if (burning) comboHud.classList.add('burning');
       else comboHud.classList.remove('burning');
 
-      // 텍스트 표시는 2초 제한
       const burnEl = document.getElementById('burning');
       if (burnTextTimer){ clearTimeout(burnTextTimer); burnTextTimer=null; }
       if (burning) {
@@ -788,7 +792,7 @@
       }
     }
 
-    // ==== 콤보: "직전 끊김 여부" 기반 + HUD ====
+    // ==== 콤보 HUD ====
     function updateComboHud(){
       if(combo>=2 && comboAlive){
         comboHud.textContent = `x${combo} COMBO`;
@@ -811,8 +815,8 @@
     function breakCombo(){
       combo = 0;
       comboAlive = false;
-      setBurning(false);     // 콤보 끊기면 버닝 해제
-      updateComboHud();      // HUD 숨김
+      setBurning(false);
+      updateComboHud();
     }
 
     function hitNormal(idx,mole){
@@ -825,7 +829,7 @@
       const tkey=mole.dataset.type;
       const honor=paramsFromLevel(getHonor(score).level);
       let gain=baseGain[tkey]*honor.gainMultHonor*(1+Math.max(0,combo-1)*0.10);
-      if(burning) gain*=3; // 🔥 버닝 중 3배
+      if(burning) gain*=3;
       setGauge(gauge+gain);
 
       const ptsBase=typePoints[tkey];
@@ -852,7 +856,7 @@
 
       onComboHit(mole);
       let val = 50;
-      if(burning) val*=3; // 버닝 보정
+      if(burning) val*=3;
       setGauge(gauge+val);
       animateFly(mole,'gauge');
       hide(idx);
@@ -889,11 +893,7 @@
       document.addEventListener(tp, e=>{ e.preventDefault(); }, { passive:false });
     });
 
-    /* ✅ 입력 처리 업데이트:
-       - 터치/클릭 판정은 upMap 존재 여부를 기준으로 함
-         (등장 인/아웃 애니메이션 동안에도 upMap이 남아 있어 히트 가능)
-       - 구멍을 눌렀는데 해당 인덱스 upMap이 없으면 miss
-    */
+    /* ✅ 입력 처리: upMap 존재 여부로 판정 */
     board.addEventListener('pointerdown',e=>{
       if(!isPlaying || isPaused) return;
 
@@ -909,7 +909,6 @@
       const entryExists = upMap.has(idx);
 
       if(idx<0 || !entryExists){
-        // 구멍은 눌렀지만 스폰 윈도우가 아니면 miss
         miss();
         return;
       }
@@ -921,11 +920,9 @@
       else                   hitNormal(idx,mole);
     });
 
-    // 보드 영역 "허공" 탭 보강(캡처 단계) — 구멍 아닌 보드 내부만 miss
+    // 보드 영역 "허공" 탭 보강
     document.addEventListener('pointerdown', (e)=>{
       if(!isPlaying || isPaused) return;
-
-      // UI/모달/버튼 영역은 제외
       const exclude = e.target.closest('.controls, .overlay, .modal, button, input, select, textarea, label');
       if (exclude) return;
 
@@ -933,11 +930,7 @@
       const x = e.clientX, y = e.clientY;
       const insideBoard = x>=br.left && x<=br.right && y>=br.top && y<=br.bottom;
       if(!insideBoard) return;
-
-      // 구멍을 눌렀으면 board 핸들러에서 처리하므로 여기서 막음
       if (e.target.closest('.hole')) return;
-
-      // 그 외(그리드 갭 등) → miss
       miss();
     }, true);
 
@@ -984,14 +977,16 @@
       nextSpawnAt = now + Math.min(gap, MAX_GAP);
     }
 
-    // 🔥 WARNING 배치 스폰 (2~9개 랜덤, 공간/상한 고려)
+    // 🔥 WARNING 배치 스폰 (최소 3마리 보장, 랜덤 3~9 / 공간/상한 고려)
     function spawnBatchDuringWarning(){
       const { maxActive } = paramsFromLevel(getHonor(score).level);
       const freeCount = 9 - active.size;
       if(freeCount <= 0) return;
 
-      const want = Math.floor(Math.random()*8) + 2; // 2~9
-      const can = Math.max(0, Math.min(want, freeCount, maxActive - active.size));
+      const minNeed = Math.max(0, 3 - active.size);        // ⇦ 최소 동시 3마리 보장
+      const want = Math.floor(Math.random()*7) + 3;         // 3~9 마리 랜덤
+      const can = Math.max(minNeed, Math.min(want, freeCount, maxActive - active.size));
+
       for(let i=0;i<can;i++) spawnOne();
     }
 
@@ -1003,7 +998,7 @@
       if(now >= nextSpawnAt){
         if(active.size < maxActive){
           if(isWarningActive()){
-            // 배치 스폰
+            // 배치 스폰 (최소 3마리 동시 보장)
             spawnBatchDuringWarning();
           } else {
             // 일반 스폰 + 페어 확률

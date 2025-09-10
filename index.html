@@ -261,7 +261,7 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <label for="version">v2.8</label>
+      <label for="version">v2.7</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
       <button id="reset" disabled>리셋</button>
@@ -289,13 +289,6 @@
       </div>
     </div>
   </div>
-    <audio id="sndClick"   src="sound/click.mp3" preload="auto"></audio>
-  <audio id="sndHit"     src="sound/hit.mp3" preload="auto"></audio>
-  <audio id="sndMiss"    src="sound/miss.mp3" preload="auto"></audio>
-  <audio id="sndMine"    src="sound/mine.wav" preload="auto"></audio>
-  <audio id="sndNuke"    src="sound/nuke.wav" preload="auto"></audio>
-  <audio id="sndBuzzer"  src="sound/buzzer.wav" preload="auto"></audio>
-  <audio id="sndFail"    src="sound/fail.wav" preload="auto"></audio>
 <script>
   /* 이미지 미리 로드 */
   ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png","images/nuke.png"]
@@ -497,6 +490,35 @@
   function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
   function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
   function burningSound(){
+    // ✅ 클릭 사운드
+function clickSound(){
+  if(muted) return; createCtx();
+  ping(520, 0.05, 'square', 0.25);
+}
+
+// ✅ 히트 사운드 (일반 두더지 성공)
+function hitSound(){
+  if(muted) return; createCtx();
+  [660, 880].forEach((f,i)=> setTimeout(()=> ping(f,0.07,'sine',0.35), i*50));
+}
+
+// ✅ 미스 사운드 (허공 클릭, 실패)
+function missSound(){
+  if(muted) return; createCtx();
+  [220,180,140].forEach((f,i)=> setTimeout(()=> ping(f,0.12,'sawtooth',0.5), i*80));
+}
+
+// ✅ BGM (조금 더 풍성한 루프)
+function startBgm(){
+  if(muted) return; createCtx(); stopBgm();
+  const pattern=[262, 330, 392, 330, 262, 262, 330, 392, 494, 392, 330, 294];
+  let i=0;
+  bgmTimer=setInterval(()=>{
+    ping(pattern[i%pattern.length], 0.18, 'triangle', 0.22);
+    i++;
+  }, 240);
+}
+
     if(muted)return; createCtx();
     [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
   }
@@ -1275,5 +1297,6 @@
 </script>
 </body>
 </html>
+
 
 

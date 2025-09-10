@@ -22,7 +22,6 @@
   <link rel="preload" as="image" href="images/bomb.png">
   <link rel="preload" as="image" href="images/hp.png">
   <link rel="preload" as="image" href="images/levelup.png">
-  <!-- 🔥 핵폭탄 이미지 프리로드 -->
   <link rel="preload" as="image" href="images/nuke.png">
 
   <style>
@@ -140,7 +139,7 @@
       transition: transform .3s ease, opacity .5s;
       background-repeat:no-repeat; background-position:center; background-size: 90% 90%;
       image-rendering: pixelated;
-      pointer-events: none; /* ✅ 터치 영역을 구멍 전체로 쓰므로 자체 포인터는 막음 */
+      pointer-events: none; /* ✅ 터치 영역은 hole */
     }
     .mole.up { transform: translateX(-50%) translateY(0); opacity: 1; }
     .mole[data-type="yellow"] { background-image:url('images/yellow.png'); }
@@ -149,11 +148,16 @@
     .mole[data-type="mine"]   { background-image:url('images/bomb.png'); }
     .mole[data-type="hp"]     { background-image:url('images/hp.png'); }
     .mole[data-type="levelup"]{ background-image:url('images/levelup.png'); }
-    /* 🔥 핵폭탄 이미지 */
     .mole[data-type="nuke"]   { background-image:url('images/nuke.png'); }
 
-    .mole .labelText { position:absolute; bottom: 8%; left:50%; transform: translateX(-50%); font-weight:900; font-size: 14px; color:#fff; font-family: 'Press Start 2P'; text-shadow: 0 1px 0 #000; pointer-events: none; }
-
+    .mole .labelText {
+      position:absolute; bottom: 8%; left:50%;
+      transform: translateX(-50%);
+      font-weight:900; font-size: 14px; color:#fff;
+      font-family: 'Press Start 2P';
+      text-shadow: 0 1px 0 #000;
+      pointer-events: none;
+    }
     /* 콤보 토스트 */
     .comboToast { position: fixed; transform: translate(-50%,-20px) scale(.8); color: #fff; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.5); opacity: 0; pointer-events: none; font-size: 14px; z-index: 60; animation: comboPop .6s ease-out both; font-family: 'Press Start 2P'; }
     @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%,-12px) scale(.85) } 30% { opacity: 1; transform: translate(-50%,-26px) scale(1.1) } 70% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%,-42px) scale(1) } }
@@ -257,7 +261,6 @@
     <main class="board panel"><div id="board" class="boardGrid"></div></main>
 
     <section class="controls panel">
-      <!-- 🔼 버전업 -->
       <label for="version">v2.7</label>
       <button id="showRank" type="button">랭킹</button>
       <button id="start">시작</button>
@@ -286,7 +289,6 @@
       </div>
     </div>
   </div>
-
 <script>
   /* 이미지 미리 로드 */
   ["images/yellow.png","images/blue.png","images/red.png","images/bomb.png","images/hp.png","images/levelup.png","images/nuke.png"]
@@ -469,6 +471,30 @@
     }
   }
 
+  // ===== 사운드 =====
+  let muted=false, audioCtx=null;
+  function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+  function ping(f=600,d=0.06,t='sine',v=0.3){
+    if(muted)return; createCtx();
+    const now=audioCtx.currentTime;
+    const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
+    o.type=t; o.frequency.setValueAtTime(f,now);
+    g.gain.setValueAtTime(0.0001,now);
+    g.gain.exponentialRampToValueAtTime(v,now+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+    o.connect(g).connect(audioCtx.destination); o.start(now); o.stop(now+d+0.02);
+  }
+  function hitChime(){ if(muted)return; createCtx(); [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
+  function buzzStrong(){ if(muted)return; createCtx(); [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
+  function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
+  function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
+  function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
+  function burningSound(){
+    if(muted)return; createCtx();
+    [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
+  }
+</script>
+<script>
   /* ================== 게임 로직 ================== */
   (()=>{ 
     const app = document.getElementById('app');
@@ -497,9 +523,9 @@
 
     /* ✅ 유지시간(히트 가능 구간): 노란 1100ms / 파란 900ms / 빨간 700ms */
     const typeCfg={
-      yellow:{up:1100},
-      blue:{up:700},
-      red:{up:500},
+      yellow:{up:1000},
+      blue:{up:800},
+      red:{up:600},
       mine:{up:900},
       hp:{up:900},
       levelup:{up:1000},
@@ -524,12 +550,12 @@
       const s = (level-1)/(50-1); // 0~1 (Lv1~Lv50)
 
       const maxActive =
-        (s < 0.20) ? 3 :
-        (s < 0.45) ? 4 :
-        (s < 0.70) ? 6 :
-        (s < 0.85) ? 7 : 8;
+        (s < 0.20) ? 2 :
+        (s < 0.45) ? 3 :
+        (s < 0.70) ? 4 :
+        (s < 0.85) ? 6 : 9;
 
-      const meanInterval = Math.max(100, 900 - 700*s); // 900ms → ~200ms
+      const meanInterval = Math.max(150, 900 - 700*s); // 900ms → ~200ms
       const levelSpawnBoost = 1 + 1.5*s; // 1.0 → 2.5
       const pairProb = Math.min(0.75, 0.18 + 0.42*s);
 
@@ -549,7 +575,7 @@
     let isPlaying=false, isCounting=false, isPaused=false;
     let score=0, gauge=100, combo=0, maxCombo=0;
     let active=new Set();
-    let upMap=new Map(); // idx -> {to, type, missed}
+    let upMap=new Map(); // idx -> {to, type, missed, touchable?}
     let tickTimer=null, countdownTimer=null;
     let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
@@ -563,18 +589,10 @@
 
     function randExp(mean){ const u=Math.random(); return -Math.log(1-u)*mean; }
 
-    // Audio
+    // Audio (Part 3에서 정의했던 함수들 사용)
     function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
-    function ping(f=600,d=0.06,t='sine',v=0.3){
-      if(muted)return; createCtx();
-      const now=audioCtx.currentTime;
-      const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
-      o.type=t; o.frequency.setValueAtTime(f,now);
-      g.gain.setValueAtTime(0.0001,now);
-      g.gain.exponentialRampToValueAtTime(v,now+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001,now+d);
-      o.connect(g).connect(audioCtx.destination); o.start(now); o.stop(now+d+0.02);
-    }
+    function ping(f=600,d=0.06,t='sine',v=0.3){ /* 상단에 정의됨 (중복 방지 위한 래핑) */ }
+
     function hitChime(){ if(muted)return; createCtx(); [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
     function buzzStrong(){ if(muted)return; createCtx(); [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
     function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
@@ -681,9 +699,9 @@
          tkey==='nuke' ? '핵폭탄' : '');
 
       const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
-      upMap.set(idx,{to, type:tkey, missed:true});
+      upMap.set(idx,{to, type:tkey, missed:true, touchable:true});
     }
-
+    /* ====== 수정된 hide(): 내려갈 때 280ms 이후 터치 불가 + 완전 사라진 뒤에만 미스 ====== */
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
       const entry=upMap.get(idx);
@@ -692,16 +710,24 @@
       const wasHit = mole.dataset.wasHit === '1';
       mole.classList.remove('up'); // 내려가기 시작
 
+      // ✅ 내려가기 시작 후 280ms 지나면 터치 불가 (하지만 미스는 아직 아님)
+      setTimeout(()=>{
+        const e = upMap.get(idx);
+        if(e){ upMap.set(idx, { ...e, touchable:false }); }
+      }, 280);
+
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
 
         const label=mole.querySelector('.labelText'); if(label) label.remove();
 
-        if (auto && entry && entry.missed && NORMAL_TYPES.has(entry.type) && !wasHit) {
+        // ✅ 노터치 실패는 완전히 내려간 뒤에만
+        const e = entry || upMap.get(idx);
+        if (auto && e && e.missed && NORMAL_TYPES.has(e.type) && !wasHit) {
           miss();
         }
         active.delete(idx);
-        if (entry) upMap.delete(idx);
+        upMap.delete(idx);
       };
 
       mole.addEventListener('transitionend', finalize, { once: true });
@@ -778,7 +804,7 @@
       if(entry){
         entry.missed = false;
         clearTimeout(entry.to);
-        upMap.delete(idx);
+        upMap.set(idx, { ...entry }); // 유지(상태 갱신)
       }
     }
 
@@ -837,15 +863,14 @@
 
       const tkey=mole.dataset.type;
       const honor=paramsFromLevel(getHonor(score).level);
-     let gain = baseGain[tkey] * honor.gainMultHonor * (1 + Math.max(0, combo-1) * 0.10);
+      let gain = baseGain[tkey] * honor.gainMultHonor * (1 + Math.max(0, combo-1) * 0.10);
 
-// 🔥 점진식 버닝 배율 (50콤보 → 3배, 100콤보 → 10배)
-if (combo >= 50) {
-  const t = Math.min(1, (combo - 50) / 50); // 50~100콤보 → 0~1
-  const mult = 3 + (10 - 3) * t;            // 3배 → 10배 점점 증가
-  gain *= mult;
-}
-
+      // 🔥 점진식 버닝 배율 (50콤보 → 3배, 100콤보 → 10배)
+      if (combo >= 50) {
+        const t = Math.min(1, (combo - 50) / 50); // 50~100콤보 → 0~1
+        const mult = 3 + (10 - 3) * t;            // 3배 → 10배 점점 증가
+        gain *= mult;
+      }
 
       setGauge(gauge+gain);
 
@@ -944,11 +969,17 @@ if (combo >= 50) {
         return;
       }
 
+      const entry = upMap.get(idx);
+      if(entry && entry.touchable === false){
+        // 내려가는 지 280ms 지나 터치 불가 구간
+        return;
+      }
+
       const t = mole.dataset.type;
       if(t==='mine')         hitMine(idx,mole);
       else if(t==='hp')      hitHp(idx,mole);
       else if(t==='levelup') hitLevelup(idx,mole);
-      else if(t==='nuke')    hitNuke(idx,mole);  // 🔥 핵폭탄 처리
+      else if(t==='nuke')    hitNuke(idx,mole);
       else                   hitNormal(idx,mole);
     });
 
@@ -1237,7 +1268,3 @@ if (combo >= 50) {
 </script>
 </body>
 </html>
-
-
-
-

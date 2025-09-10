@@ -149,7 +149,6 @@
     .mole[data-type="hp"]     { background-image:url('images/hp.png'); }
     .mole[data-type="levelup"]{ background-image:url('images/levelup.png'); }
     .mole[data-type="nuke"]   { background-image:url('images/nuke.png'); }
-
     .mole .labelText {
       position:absolute; bottom: 8%; left:50%;
       transform: translateX(-50%);
@@ -471,8 +470,8 @@
     }
   }
 
-  // ===== 사운드 =====
-  let muted=false, audioCtx=null;
+  /* ===== 사운드 (정리된 단일 정의) ===== */
+  let muted=false, audioCtx=null, bgmTimer=null;
   function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
   function ping(f=600,d=0.06,t='sine',v=0.3){
     if(muted)return; createCtx();
@@ -484,43 +483,34 @@
     g.gain.exponentialRampToValueAtTime(0.0001,now+d);
     o.connect(g).connect(audioCtx.destination); o.start(now); o.stop(now+d+0.02);
   }
-  function hitChime(){ if(muted)return; createCtx(); [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
-  function buzzStrong(){ if(muted)return; createCtx(); [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
-  function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
+  function clickSound(){ if(muted) return; ping(520,0.05,'square',0.25); }
+  function hitSound(){ if(muted) return; [660,880].forEach((f,i)=> setTimeout(()=> ping(f,0.07,'sine',0.35), i*50)); }
+  function hitChime(){ if(muted)return; [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
+  function missSound(){ if(muted) return; [220,180,140].forEach((f,i)=> setTimeout(()=> ping(f,0.12,'sawtooth',0.5), i*80)); }
+  function buzzStrong(){ if(muted)return; [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
+  function mineBlast(){ if(muted)return; [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
   function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
   function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
-  function burningSound(){
-    // ✅ 클릭 사운드
-function clickSound(){
-  if(muted) return; createCtx();
-  ping(520, 0.05, 'square', 0.25);
-}
-
-// ✅ 히트 사운드 (일반 두더지 성공)
-function hitSound(){
-  if(muted) return; createCtx();
-  [660, 880].forEach((f,i)=> setTimeout(()=> ping(f,0.07,'sine',0.35), i*50));
-}
-
-// ✅ 미스 사운드 (허공 클릭, 실패)
-function missSound(){
-  if(muted) return; createCtx();
-  [220,180,140].forEach((f,i)=> setTimeout(()=> ping(f,0.12,'sawtooth',0.5), i*80));
-}
-
-// ✅ BGM (조금 더 풍성한 루프)
-function startBgm(){
-  if(muted) return; createCtx(); stopBgm();
-  const pattern=[262, 330, 392, 330, 262, 262, 330, 392, 494, 392, 330, 294];
-  let i=0;
-  bgmTimer=setInterval(()=>{
-    ping(pattern[i%pattern.length], 0.18, 'triangle', 0.22);
-    i++;
-  }, 240);
-}
-
+  function burningSound(){ if(muted)return; [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80)); }
+  function startBgm(){
+    if(muted) return; createCtx(); stopBgm();
+    const pattern=[440,554,659,554,440,440,554,659,740,659,554,494]; let i=0;
+    bgmTimer=setInterval(()=>{ ping(pattern[i%pattern.length],0.14,'triangle',0.22); i++; },180);
+  }
+  function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
+  function noiseBurst(dur=0.15, vol=0.35){
     if(muted)return; createCtx();
-    [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
+    const sr=audioCtx.sampleRate; const len=Math.floor(sr*dur);
+    const buf=audioCtx.createBuffer(1,len,sr); const data=buf.getChannelData(0);
+    for(let i=0;i<len;i++){ data[i]=(Math.random()*2-1)*Math.pow(1-i/len,2); }
+    const src=audioCtx.createBufferSource(); const g=audioCtx.createGain(); g.gain.value=vol;
+    src.buffer=buf; src.connect(g).connect(audioCtx.destination); src.start();
+  }
+  function playCrowd(level){
+    if(muted)return;
+    if(level<10){ [180,140,100].forEach((f,i)=> setTimeout(()=> ping(f,0.25,'sawtooth',0.6), i*160)); setTimeout(()=> noiseBurst(0.25,0.4), 60); }
+    else if(level<30){ for(let i=0;i<12;i++){ setTimeout(()=> noiseBurst(0.08,0.32), 60*i); } }
+    else { [660,880,990,1320].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*70)); for(let i=0;i<20;i++){ setTimeout(()=> noiseBurst(0.08,0.35), 40*i); } }
   }
 </script>
 <script>
@@ -580,9 +570,9 @@ function startBgm(){
 
       const maxActive =
         (s < 0.20) ? 2 :
-        (s < 0.45) ? 3 :
-        (s < 0.70) ? 4 :
-        (s < 0.85) ? 6 : 9;
+        (s < 0.45) ? 4 :
+        (s < 0.70) ? 5 :
+        (s < 0.85) ? 7 : 9;
 
       const meanInterval = Math.max(150, 900 - 700*s); // 900ms → ~200ms
       const levelSpawnBoost = 1 + 1.5*s; // 1.0 → 2.5
@@ -606,7 +596,6 @@ function startBgm(){
     let active=new Set();
     let upMap=new Map(); // idx -> {to, type, missed, touchable?}
     let tickTimer=null, countdownTimer=null;
-    let muted=false, audioCtx=null;
     let prevLevel=1, boostUntilLevel=0;
     let spawnedLv=false;
     let rafId = null;
@@ -618,40 +607,9 @@ function startBgm(){
 
     function randExp(mean){ const u=Math.random(); return -Math.log(1-u)*mean; }
 
-    // Audio (Part 3에서 정의했던 함수들 사용)
-    function createCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
-    function ping(f=600,d=0.06,t='sine',v=0.3){ /* 상단에 정의됨 (중복 방지 위한 래핑) */ }
+    // Audio: 전역 사운드 함수 사용 (createCtx/ping/.. 이미 1st 스크립트에서 정의)
+    function hitChimeWrapper(){ hitChime(); } // (참조용)
 
-    function hitChime(){ if(muted)return; createCtx(); [660,880,990].forEach((f,i)=> setTimeout(()=> ping(f,0.06,i===2?'triangle':'sine',0.28), i*42)); }
-    function buzzStrong(){ if(muted)return; createCtx(); [90,70,50].forEach((f,i)=> setTimeout(()=> ping(f,0.16,'sawtooth',0.6), i*90)); }
-    function mineBlast(){ if(muted)return; createCtx(); [150,100,60,40].forEach((f,i)=> setTimeout(()=> ping(f,0.18,'square',0.7), i*80)); }
-    function countdownBeep(n){ if(muted) return; const freq=[0,520,600,720][n]||520; ping(freq,0.10,'sine',0.35); }
-    function countdownStart(){ if(muted) return; [880,1040,1240].forEach((f,i)=> setTimeout(()=> ping(f,0.08,'triangle',0.4), i*60)); }
-    function burningSound(){
-      if(muted)return; createCtx();
-      [880,1175,1397,1760].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*80));
-    }
-
-    let bgmTimer=null;
-    function startBgm(){ if(muted) return; createCtx(); stopBgm();
-      const pattern=[440,554,659,554,440,440,554,659,740,659,554,494]; let i=0;
-      bgmTimer=setInterval(()=>{ ping(pattern[i%pattern.length],0.14,'triangle',0.22); i++; },180);
-    }
-    function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
-
-    function noiseBurst(dur=0.15, vol=0.35){ if(muted)return; createCtx();
-      const sr=audioCtx.sampleRate; const len=Math.floor(sr*dur);
-      const buf=audioCtx.createBuffer(1,len,sr); const data=buf.getChannelData(0);
-      for(let i=0;i<len;i++){ data[i]=(Math.random()*2-1)*Math.pow(1-i/len,2); }
-      const src=audioCtx.createBufferSource(); const g=audioCtx.createGain(); g.gain.value=vol;
-      src.buffer=buf; src.connect(g).connect(audioCtx.destination); src.start();
-    }
-    function playCrowd(level){
-      if(muted)return;
-      if(level<10){ [180,140,100].forEach((f,i)=> setTimeout(()=> ping(f,0.25,'sawtooth',0.6), i*160)); setTimeout(()=> noiseBurst(0.25,0.4), 60); }
-      else if(level<30){ for(let i=0;i<12;i++){ setTimeout(()=> noiseBurst(0.08,0.32), 60*i); } }
-      else { [660,880,990,1320].forEach((f,i)=> setTimeout(()=> ping(f,0.10,'triangle',0.45), i*70)); for(let i=0;i<20;i++){ setTimeout(()=> noiseBurst(0.08,0.35), 40*i); } }
-    }
     function updateTrophy(){
       const h=getHonor(score);
       trophyFill.style.width=`${Math.round(h.progress*100)}%`;
@@ -730,6 +688,7 @@ function startBgm(){
       const to=setTimeout(()=> hide(idx, true), typeCfg[tkey].up);
       upMap.set(idx,{to, type:tkey, missed:true, touchable:true});
     }
+
     /* ====== 수정된 hide(): 내려갈 때 280ms 이후 터치 불가 + 완전 사라진 뒤에만 미스 ====== */
     function hide(idx, auto=false){
       const mole=holes[idx].firstChild;
@@ -743,7 +702,7 @@ function startBgm(){
       setTimeout(()=>{
         const e = upMap.get(idx);
         if(e){ upMap.set(idx, { ...e, touchable:false }); }
-      }, 280);
+      }, 210);
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
@@ -962,6 +921,7 @@ function startBgm(){
       setGauge(gauge-22);
       app.classList.add('shake'); setTimeout(()=> app.classList.remove('shake'), 300);
       buzzStrong();
+      missSound();
     }
 
     // ✅ 제스처/확대 억제
@@ -1297,6 +1257,3 @@ function startBgm(){
 </script>
 </body>
 </html>
-
-
-

@@ -697,12 +697,19 @@
 
       const wasHit = mole.dataset.wasHit === '1';
       mole.classList.remove('up'); // 내려가기 시작
+// ✅ 내려가자마자 터치는 불가
+if(entry){
+  upMap.set(idx, { ...entry, touchable:false });
+}
+// ✅ 하지만 미스 판정은 250ms 후에 체크
+setTimeout(()=>{
+  const e = upMap.get(idx);
+  if(e && e.missed && NORMAL_TYPES.has(e.type) && !wasHit){
+    miss();
+  }
+}, 220);
 
-      // ✅ 내려가기 시작 후 280ms 지나면 터치 불가 (하지만 미스는 아직 아님)
-      setTimeout(()=>{
-        const e = upMap.get(idx);
-        if(e){ upMap.set(idx, { ...e, touchable:false }); }
-      }, 250);
+ 
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
@@ -1257,5 +1264,6 @@
 </script>
 </body>
 </html>
+
 
 

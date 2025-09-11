@@ -702,7 +702,7 @@
       setTimeout(()=>{
         const e = upMap.get(idx);
         if(e){ upMap.set(idx, { ...e, touchable:false }); }
-      }, 210);
+      }, 250);
 
       const finalize = () => {
         mole.removeEventListener('transitionend', finalize);
@@ -1257,4 +1257,5 @@
 </script>
 </body>
 </html>
+
 

@@ -570,10 +570,10 @@
       const s = (level-1)/(50-1); // 0~1 (Lv1~Lv50)
 
       const maxActive =
-        (s < 0.20) ? 2 :
+        (s < 0.20) ? 3 :
         (s < 0.45) ? 4 :
-        (s < 0.70) ? 5 :
-        (s < 0.85) ? 7 : 9;
+        (s < 0.70) ? 6 :
+        (s < 0.85) ? 8 : 9;
 
       const meanInterval = Math.max(150, 900 - 700*s); // 900ms → ~200ms
       const levelSpawnBoost = 1 + 1.5*s; // 1.0 → 2.5
@@ -1043,7 +1043,7 @@ setTimeout(()=>{
       if(freeCount <= 0) return;
 
       const minNeed = Math.max(0, 3 - active.size);
-      const want = Math.floor(Math.random()*7) + 3; // 3~9
+      const want = Math.floor(Math.random()*7) + 4; // 3~9
       const can = Math.max(minNeed, Math.min(want, freeCount, maxActive - active.size));
 
       for(let i=0;i<can;i++) spawnOne();
@@ -1265,6 +1265,7 @@ setTimeout(()=>{
 </script>
 </body>
 </html>
+
 
 
 

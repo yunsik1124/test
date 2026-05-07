@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V73 - 피드백 완벽 보정판</title>
+    <title>강철의 난: 무림수호맹 V75 - 서사 완벽 통제판</title>
     <style>
         body {
             margin: 0;
@@ -53,7 +53,7 @@
         .hud-panel {
             position: absolute;
             top: 20px;
-            right: 60px; /* 우측 잘림 방지를 위해 좌측으로 이동 */
+            right: 60px;
             background: rgba(0,0,0,0.85);
             border: 2px solid #f1c40f;
             padding: 10px 20px;
@@ -95,7 +95,6 @@
             display: none;
             position: relative;
             pointer-events: auto;
-            /* 인게임 캔버스와 동일한 비율 유지 및 화면 크기 맞춤 */
             width: 96%;
             height: 96%;
             max-width: 1920px;
@@ -216,7 +215,6 @@
             border: 1px solid #444;
             padding: 15px;
             overflow-y: auto;
-            /* 강제 2열 배열을 위한 CSS Grid 도입 */
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 20px;
@@ -272,7 +270,6 @@
             align-items: center;
         }
 
-        /* 노드(원) 크기 대폭 확장 */
         .node {
             width: 130px;
             height: 130px;
@@ -408,9 +405,6 @@
             border: 1px solid #555;
         }
 
-        /* ========================================================
-           모바일 반응형 및 강제 가로모드 (Forced Landscape) 최적화
-        ======================================================== */
         @media screen and (orientation: portrait) {
             body {
                 width: 100vw;
@@ -468,7 +462,6 @@
                 padding: 6px 10px;
             }
 
-            /* 모바일에서도 카테고리는 무조건 2:2 유지 */
             .tree-section {
                 padding: 10px;
                 gap: 10px;
@@ -494,7 +487,6 @@
                 padding: 5px 0;
             }
 
-            /* 모바일 노드 사이즈 확대 보정 */
             .node {
                 width: 85px;
                 height: 85px;
@@ -630,11 +622,11 @@
 
         function saveGame() {
             const data = { upgrades, equippedHero, currentStage, coins };
-            localStorage.setItem('murimGuardiansSaveV73', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV75', JSON.stringify(data));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('murimGuardiansSaveV73');
+            const saved = localStorage.getItem('murimGuardiansSaveV75');
             if (saved) {
                 const data = JSON.parse(saved);
                 upgrades = data.upgrades || upgrades;
@@ -646,7 +638,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV73');
+                localStorage.removeItem('murimGuardiansSaveV75');
                 location.reload();
             }
         }
@@ -670,8 +662,10 @@
         let waveTimer = waveDurations[0];
         let enemiesSpawned = 0;
         let showWaveWarning = 0;
-        let waveState = 'spawning';
-        let waveWaitTimer = 0;
+
+        // 서사 진행을 위한 상태 로직 (초기 진입 시 스테이지 1 텍스트부터)
+        let waveState = 'stage_intro';
+        let waveWaitTimer = 90;
         let bossSpawned = false;
 
         let enemies = []; let projectiles = []; let floatingTexts = [];
@@ -793,7 +787,6 @@
                         }
                     }
 
-                    // 가격(💰) 렌더링 포함
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
                                         <span>${detail.name}</span>
                                         <div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div>
@@ -942,7 +935,6 @@
 
             if (gameState !== 'playing') return;
 
-            // 속도(X2) 배속 버튼 반경 2배 확대 적용 (x=100, y=120, r=60)
             if (Math.hypot(mouseX - 100, mouseY - 120) <= 60) {
                 isSpeedUp = !isSpeedUp;
                 return;
@@ -1065,18 +1057,16 @@
                         ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(10, 10, 150, 40);
                         drawText(`[ FPS : ${currentFPS} ]`, 85, 30, 20, "#2ecc71");
 
-                        // X2 배속 버튼 크기 2배 및 위치 이동 보정 (x=100, y=120)
                         ctx.fillStyle = isSpeedUp ? "rgba(231, 76, 60, 0.9)" : "rgba(127, 140, 141, 0.8)";
                         ctx.beginPath(); ctx.arc(100, 120, 60, 0, Math.PI * 2); ctx.fill();
                         ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.stroke();
                         drawText("X2", 100, 120, 40, "white");
 
-                        // 상단 UI 박스 및 텍스트 150px 좌측 밀기
                         ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(W / 2 - 650, 15, 1100, 60);
                         drawText(`[ 스테이지 ${currentStage} ]`, W / 2 - 450, 45, 30, "#2ecc71");
 
                         let remainSec = Math.ceil(waveTimer / 60);
-                        let waveStr = currentWave === 4 ? "마신왕 결전" : `제 ${currentWave + 1}파 진격 (${remainSec}초)`;
+                        let waveStr = currentWave === 4 ? "웨이브 5 (보스전)" : `웨이브 ${currentWave + 1} (${remainSec}초)`;
                         drawText(waveStr, W / 2 - 100, 45, 34, "#f39c12");
                         drawText(`에너지: ${baseEnergy}% 危`, W / 2 + 250, 45, 30, "#ff4757");
 
@@ -1180,8 +1170,21 @@
 
                         let stageMulti = Math.pow(1.10, currentStage - 1);
 
-                        if (waveState === 'spawning' && timeStopFrames <= 0) {
-                            if (waveTimer === waveDurations[currentWave] && currentWave < 4) showWaveWarning = 75;
+                        // 서사(State) 전환 로직 (텍스트 렌더링 배제, 오직 타이머와 상태 전환만 담당)
+                        if (waveState === 'stage_intro') {
+                            waveWaitTimer--;
+                            if (waveWaitTimer <= 0) {
+                                waveState = 'wave_intro';
+                                waveWaitTimer = 90;
+                            }
+                        } else if (waveState === 'wave_intro') {
+                            waveWaitTimer--;
+                            if (waveWaitTimer <= 0) {
+                                waveState = 'spawning';
+                                waveTimer = waveDurations[currentWave];
+                                enemiesSpawned = 0;
+                            }
+                        } else if (waveState === 'spawning' && timeStopFrames <= 0) {
                             waveTimer--;
                             let spawnInterval = Math.max(10, Math.floor(42 - (currentWave * 6)));
 
@@ -1194,9 +1197,9 @@
                                 if (!bossSpawned && (waveTimer <= waveDurations[4] * 0.2 || enemiesSpawned >= waveQuotas[4] * 0.8)) {
                                     let lane = lanes[2];
                                     enemies.push({ type: 'boss', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(10000 * stageMulti), maxHp: Math.floor(10000 * stageMulti), speed: 0.19, cd: 0, slowTimer: 0, hitAnim: 0, poisoned: false, reward: 500 });
-                                    bossSpawned = true; showWaveWarning = 100;
+                                    bossSpawned = true; showWaveWarning = 150;
                                 }
-                                if (bossSpawned && enemies.length === 0) { waveState = 'stage_cleared'; waveWaitTimer = 40; }
+                                if (bossSpawned && enemies.length === 0) { waveState = 'stage_cleared'; waveWaitTimer = 120; }
                             } else {
                                 if (frameCount % spawnInterval === 0 && enemiesSpawned < waveQuotas[currentWave]) {
                                     const lane = lanes[Math.floor(Math.random() * lanes.length)];
@@ -1211,21 +1214,17 @@
                                     enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(eHp * stageMulti), maxHp: Math.floor(eHp * stageMulti), slowTimer: 0, speed: eSpeed, damage: Math.floor(eDmg * stageMulti), color: eColor, range: eRange, isRanged: eIsRanged, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: finalReward });
                                     enemiesSpawned++;
                                 }
-                                if (waveTimer <= 0) { waveState = 'waiting'; waveWaitTimer = 125; }
+                                if (waveTimer <= 0) {
+                                    currentWave++;
+                                    waveState = 'wave_intro';
+                                    waveWaitTimer = 90;
+                                }
                             }
-                        } else if (waveState === 'waiting') {
-                            waveWaitTimer--;
-                            if (currentWave === 3) {
-                                let waitAlpha = Math.abs(Math.sin(frameCount * 0.1));
-                                drawText(`🚨 [스테이지 ${currentStage}] 마신왕 강림 임박 🚨`, W / 2, H / 2 - 60, 80, `rgba(255, 0, 0, ${waitAlpha})`);
-                            } else { drawText("방어선 재정비 중... (다음 웨이브 대기)", W / 2, H / 2, 60, "#3498db"); }
-
-                            if (waveWaitTimer <= 0) { currentWave++; waveTimer = waveDurations[currentWave]; enemiesSpawned = 0; waveState = 'spawning'; }
                         } else if (waveState === 'stage_cleared') {
                             waveWaitTimer--;
-                            drawText(`🏆 스테이지 ${currentStage} 돌파! 무공과 내공을 갈무리 중... 🏆`, W / 2, H / 2, 60, "#2ecc71");
                             if (waveWaitTimer <= 0) {
-                                currentStage++; currentWave = 0; bossSpawned = false; enemiesSpawned = 0; waveTimer = waveDurations[0]; baseEnergy = 100; waveState = 'spawning';
+                                currentStage++; currentWave = 0; bossSpawned = false; enemiesSpawned = 0; baseEnergy = 100;
+                                waveState = 'stage_intro'; waveWaitTimer = 90;
                                 saveGame();
                             }
                         }
@@ -1505,7 +1504,6 @@
 
                         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
 
-                        // 대기소 폰트 위로 보정
                         drawText("수호맹 대기소", 100, 865, 24, "#aaa", "left");
 
                         deck.forEach((char, i) => {
@@ -1556,10 +1554,19 @@
                             drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 80, 30, "red");
                         }
 
-                        // 최상단 텍스트 및 경고 레이어 표시부 (요청 사항 반영)
+                        // 최상단 텍스트 및 경고 레이어 표시부 (서사 타이머 및 이펙트 버그 완벽 보정)
+                        if (waveState === 'stage_intro') {
+                            drawText(`스테이지 ${currentStage}`, W / 2, H / 2 - 40, 120, "#f1c40f");
+                        } else if (waveState === 'wave_intro') {
+                            drawText(`웨이브 ${currentWave + 1}`, W / 2, H / 2 - 40, 120, "#3498db");
+                        } else if (waveState === 'stage_cleared') {
+                            drawText(`🏆 스테이지 ${currentStage} 돌파! 🏆`, W / 2, H / 2 - 40, 100, "#2ecc71");
+                        }
+
                         if (heroSlot.activeTimer > 0) {
                             ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H);
                             drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color);
+                            heroSlot.activeTimer--; // 버그 픽스: 스킬 유지시간 차감 로직 복구
                         }
                         if (invincibleFrames > 0) {
                             drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold");
@@ -1567,7 +1574,7 @@
                         if (showWaveWarning > 0) {
                             let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1));
                             drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`);
-                            showWaveWarning--;
+                            showWaveWarning--; // 버그 픽스: 보스 경고 유지시간 차감 로직 복구
                         }
 
                         if (timeStopFrames > 0) timeStopFrames--;

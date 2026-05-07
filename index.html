@@ -16,8 +16,8 @@
             overflow: hidden;
             font-family: 'Malgun Gothic', sans-serif;
             user-select: none;
-            -webkit-user-select: none; /* 모바일 텍스트 드래그 방지 */
-            touch-action: none; /* 모바일 브라우저 기본 제스처 방지 */
+            -webkit-user-select: none;
+            touch-action: none;
         }
 
         #gameContainer {
@@ -250,18 +250,23 @@
             text-align: center;
         }
 
-        .node-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* 2:2 강제 배열 및 라인 연출을 위한 그리드 */
+        .nodes-grid {
+            --grid-gap: 30px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--grid-gap);
             width: 100%;
+            padding: 10px 0;
+            position: relative;
         }
 
-        .node-line {
-            width: 4px;
-            height: 25px;
-            background: #555;
-            box-shadow: 1px 0 2px #000;
+        .node-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .node {
@@ -400,9 +405,26 @@
         }
 
         /* ========================================================
-           모바일 가로모드 (Landscape & Small Screen) 반응형 최적화
+           모바일 반응형 및 강제 가로모드 로직 (Forced Landscape)
         ======================================================== */
-        @media screen and (max-height: 600px), screen and (max-width: 900px) {
+        @media screen and (orientation: portrait) {
+            body {
+                width: 100vw;
+                height: 100vh;
+            }
+
+            #gameContainer {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 100vh;
+                height: 100vw;
+                transform: translate(-50%, -50%) rotate(90deg);
+                transform-origin: center center;
+            }
+        }
+
+        @media screen and (max-height: 600px) and (orientation: landscape), screen and (max-width: 900px) {
             .hud-panel {
                 top: 5px;
                 right: 5px;
@@ -469,31 +491,31 @@
                 margin-bottom: 10px;
             }
 
+            .nodes-grid {
+                --grid-gap: 15px;
+                padding: 5px 0;
+            }
+
             .node {
                 width: 60px;
                 height: 60px;
                 border-width: 2px;
             }
 
-            .node-line {
-                height: 15px;
-                width: 2px;
-            }
+                .node span {
+                    font-size: 10px;
+                    padding: 0 2px;
+                }
 
-            .node span {
-                font-size: 10px;
-                padding: 0 2px;
-            }
+                .node .lvl {
+                    font-size: 10px;
+                    padding: 1px 4px;
+                    margin-top: 2px;
+                }
 
-            .node .lvl {
-                font-size: 10px;
-                padding: 1px 4px;
-                margin-top: 2px;
-            }
-
-            .node.locked::after {
-                font-size: 20px;
-            }
+                .node.locked::after {
+                    font-size: 20px;
+                }
 
             .hero-section {
                 padding: 10px;
@@ -543,7 +565,7 @@
                         <h1>무림 수호 관청</h1>
                     </div>
                     <div class="header-controls">
-                        <div id="gameOverWarning">⚠️ 전사했소! 남은 코인은 전부 소멸되니 비급을 연마하고 재도전(F5) 하시오!</div>
+                        <div id="gameOverWarning">⚠️ 전사했소! 남은 코인은 전부 소멸되니 비급을 연마하고 재도전 하시오!</div>
                         <div style="color:white; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.5); padding:8px 15px; border-radius:8px;">보유 코인: 💰 <span id="popupCoin">500</span></div>
                         <button class="close-btn" onclick="togglePopup(false)">전장으로 복귀 X</button>
                     </div>
@@ -609,11 +631,11 @@
 
         function saveGame() {
             const data = { upgrades, equippedHero, currentStage, coins };
-            localStorage.setItem('murimGuardiansSaveV71', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV72', JSON.stringify(data));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('murimGuardiansSaveV71');
+            const saved = localStorage.getItem('murimGuardiansSaveV72');
             if (saved) {
                 const data = JSON.parse(saved);
                 upgrades = data.upgrades || upgrades;
@@ -625,7 +647,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV71');
+                localStorage.removeItem('murimGuardiansSaveV72');
                 location.reload();
             }
         }
@@ -743,25 +765,47 @@
             skillCategories.forEach(cat => {
                 let html = `<div class="skill-branch">
                                     <div class="skill-title" style="color:${cat.color}">${cat.id}</div>
-                                    <div class="skill-desc">${cat.desc}</div>`;
+                                    <div class="skill-desc">${cat.desc}</div>
+                                    <div class="nodes-grid">`;
 
                 cat.stats.forEach((statKey, idx) => {
                     let lvl = upgrades[cat.id][statKey];
                     let detail = statDetails[statKey];
-                    let cost = detail.base;
                     let isMax = lvl >= 10;
                     let isLocked = idx > 0 && upgrades[cat.id][cat.stats[idx - 1]] < 5;
 
-                    html += `<div class="node-wrapper">
-                                    ${idx !== 0 ? '<div class="node-line"></div>' : ''}
-                                    <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
+                    html += `<div class="node-wrapper">`;
+
+                    // 순차 연결선 렌더링 (0->1, 1->2, 2->3)
+                    if (idx < cat.stats.length - 1) {
+                        let nextLvl = upgrades[cat.id][cat.stats[idx]];
+                        let isNextUnlocked = nextLvl >= 5;
+                        let lineColor = isNextUnlocked ? '#f1c40f' : '#555';
+                        let shadow = isNextUnlocked ? `box-shadow: 0 0 8px ${lineColor};` : '';
+                        let svgShadow = isNextUnlocked ? `drop-shadow(0 0 8px ${lineColor})` : 'none';
+
+                        if (idx === 0) {
+                            // 가로선 (0에서 1로)
+                            html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
+                        } else if (idx === 1) {
+                            // 대각선 (1에서 2로)
+                            html += `<svg style="position:absolute; top:50%; right:50%; width:100%; height:calc(100% + var(--grid-gap)); z-index:0; overflow:visible; pointer-events:none; filter:${svgShadow};">
+                                           <line x1="100%" y1="0" x2="0" y2="100%" stroke="${lineColor}" stroke-width="4"/>
+                                         </svg>`;
+                        } else if (idx === 2) {
+                            // 가로선 (2에서 3으로)
+                            html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
+                        }
+                    }
+
+                    html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
                                         <span>${detail.name}</span>
                                         <div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div>
                                         <div class="lvl">${lvl}/10</div>
                                     </div>
                                  </div>`;
                 });
-                html += `</div>`;
+                html += `</div></div>`;
                 treeCon.innerHTML += html;
             });
 
@@ -774,10 +818,10 @@
                 let btnHtml = isEq ? `<button class="hero-btn btn-equipped" disabled>장착 중</button>` :
                     `<button class="hero-btn btn-buy" ${coins < currentSwapCost ? 'disabled style="background:#555;cursor:not-allowed"' : ''} onclick="buyEquipHero('${h.id}')">${currentSwapCost}💰 교체</button>`;
                 heroCon.innerHTML += `<div class="hero-card ${isEq ? 'equipped' : ''}">
-                                            <h3 style="color:${h.color}">${h.name}</h3>
-                                            <p>${h.desc}</p>
-                                            ${btnHtml}
-                                          </div>`;
+                                                <h3 style="color:${h.color}">${h.name}</h3>
+                                                <p>${h.desc}</p>
+                                                ${btnHtml}
+                                              </div>`;
             });
         }
 
@@ -877,15 +921,32 @@
             }
         }
 
-        // --- 마우스 및 터치 이벤트 통합 매핑 ---
+        // 역산 매핑(Inverse Coordinate Mapping)을 활용한 모바일 강제 가로모드 좌표계
         function updateMousePos(clientX, clientY) {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = (clientX - rect.left) * (W / rect.width);
-            mouseY = (clientY - rect.top) * (H / rect.height);
+            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+            if (isPortrait) {
+                // 화면이 세로일 때, CSS로 캔버스가 90도 회전되었으므로 좌표계를 역전환함
+                mouseX = clientY * (W / window.innerHeight);
+                mouseY = (window.innerWidth - clientX) * (H / window.innerWidth);
+            } else {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = (clientX - rect.left) * (W / rect.width);
+                mouseY = (clientY - rect.top) * (H / rect.height);
+            }
         }
 
         function handleInteract(e) {
-            if (e.target !== canvas || gameState !== 'playing') return;
+            if (e.target !== canvas) return;
+
+            // 게임 오버 상태일 때 재도전 버튼 클릭 판정
+            if (gameState === 'gameover') {
+                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 100 && mouseY <= H / 2 + 190) {
+                    location.reload();
+                }
+                return;
+            }
+
+            if (gameState !== 'playing') return;
 
             if (Math.hypot(mouseX - 50, mouseY - 80) <= 30) {
                 isSpeedUp = !isSpeedUp;
@@ -941,21 +1002,19 @@
             }
         }
 
-        // 데스크톱 이벤트
         canvas.addEventListener('mousemove', (e) => updateMousePos(e.clientX, e.clientY));
         canvas.addEventListener('mousedown', (e) => {
             updateMousePos(e.clientX, e.clientY);
             handleInteract(e);
         });
 
-        // 모바일 터치 이벤트
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
 
         canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // 더블 탭 확대 방지
+            e.preventDefault();
             if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
             handleInteract(e);
         }, { passive: false });
@@ -1522,10 +1581,17 @@
                         if (invincibleFrames > 0) invincibleFrames--;
                         frameCount++;
                     } else if (gameState === 'gameover') {
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fillRect(0, 0, W, H);
-                        drawText(`패배: 스테이지 ${currentStage} 에서 무림의 심장이 멎었습니다`, W / 2, H / 2 - 40, 80, "red");
-                        drawText("남은 코인은 전부 소멸되니, 수호 관청에서 비급을 연마 후 새로고침 하시오.", W / 2, H / 2 + 50, 40, "white");
-                        drawText("危", W / 2, H / 2 + 150, 180, "rgba(255, 71, 87, 0.8)");
+                        // 캔버스 기반 인게임 게임 오버 화면 및 재도전 버튼 렌더링
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, W, H);
+                        drawText(`패배: 스테이지 ${currentStage} 에서 무림의 심장이 멎었습니다`, W / 2, H / 2 - 80, 70, "#ff4757");
+                        drawText("남은 코인은 전부 소멸되니, 수호 관청에서 비급을 연마 후 재도전 하시오.", W / 2, H / 2, 35, "#bdc3c7");
+                        drawText("危", W / 2, H / 2 - 250, 150, "rgba(255, 71, 87, 0.8)");
+
+                        ctx.fillStyle = "#c0392b";
+                        ctx.fillRect(W / 2 - 180, H / 2 + 100, 360, 90);
+                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4;
+                        ctx.strokeRect(W / 2 - 180, H / 2 + 100, 360, 90);
+                        drawText("⚔️ 다시 도전하기", W / 2, H / 2 + 145, 40, "white");
                     }
 
                     ctx.restore();

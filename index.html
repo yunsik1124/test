@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V72 - 모바일 가로모드 반응형 최적화</title>
+    <title>강철의 난: 무림수호맹 V73 - 피드백 완벽 보정판</title>
     <style>
         body {
             margin: 0;
@@ -53,7 +53,7 @@
         .hud-panel {
             position: absolute;
             top: 20px;
-            right: 20px;
+            right: 60px; /* 우측 잘림 방지를 위해 좌측으로 이동 */
             background: rgba(0,0,0,0.85);
             border: 2px solid #f1c40f;
             padding: 10px 20px;
@@ -95,9 +95,12 @@
             display: none;
             position: relative;
             pointer-events: auto;
-            width: 90%;
-            height: 90%;
-            max-width: 1600px;
+            /* 인게임 캔버스와 동일한 비율 유지 및 화면 크기 맞춤 */
+            width: 96%;
+            height: 96%;
+            max-width: 1920px;
+            max-height: 1080px;
+            aspect-ratio: 16 / 9;
             background: #1a1a1a;
             border: 3px solid #f1c40f;
             border-radius: 12px;
@@ -106,6 +109,7 @@
             box-sizing: border-box;
             box-shadow: 0 0 50px rgba(0,0,0,0.95);
             z-index: 100;
+            margin: auto;
         }
 
         .popup-header {
@@ -210,12 +214,12 @@
             background: #222;
             border-radius: 8px;
             border: 1px solid #444;
-            padding: 20px;
+            padding: 15px;
             overflow-y: auto;
-            display: flex;
-            justify-content: center;
+            /* 강제 2열 배열을 위한 CSS Grid 도입 */
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
-            flex-wrap: wrap;
             align-content: flex-start;
         }
 
@@ -223,10 +227,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 45%;
+            width: 100%;
+            box-sizing: border-box;
             background: rgba(255,255,255,0.03);
             padding: 20px 15px;
-            margin-bottom: 15px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.08);
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
@@ -250,7 +254,6 @@
             text-align: center;
         }
 
-        /* 2:2 강제 배열 및 라인 연출을 위한 그리드 */
         .nodes-grid {
             --grid-gap: 30px;
             display: grid;
@@ -269,9 +272,10 @@
             align-items: center;
         }
 
+        /* 노드(원) 크기 대폭 확장 */
         .node {
-            width: 110px;
-            height: 110px;
+            width: 130px;
+            height: 130px;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border: 3px solid #7f8c8d;
             border-radius: 50%;
@@ -307,13 +311,13 @@
                 .node.locked::after {
                     content: '🔒';
                     position: absolute;
-                    font-size: 30px;
+                    font-size: 35px;
                     opacity: 0.8;
                 }
 
             .node span {
                 color: white;
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: bold;
                 text-align: center;
                 line-height: 1.1;
@@ -405,7 +409,7 @@
         }
 
         /* ========================================================
-           모바일 반응형 및 강제 가로모드 로직 (Forced Landscape)
+           모바일 반응형 및 강제 가로모드 (Forced Landscape) 최적화
         ======================================================== */
         @media screen and (orientation: portrait) {
             body {
@@ -424,10 +428,10 @@
             }
         }
 
-        @media screen and (max-height: 600px) and (orientation: landscape), screen and (max-width: 900px) {
+        @media screen and (max-height: 600px) and (orientation: landscape), screen and (max-width: 900px), screen and (orientation: portrait) {
             .hud-panel {
                 top: 5px;
-                right: 5px;
+                right: 50px;
                 padding: 5px 10px;
                 gap: 10px;
             }
@@ -439,12 +443,6 @@
             .hud-btn {
                 font-size: 12px;
                 padding: 4px 8px;
-            }
-
-            #upgradePopup {
-                width: 98%;
-                height: 98%;
-                padding: 10px;
             }
 
             .popup-header {
@@ -470,15 +468,15 @@
                 padding: 6px 10px;
             }
 
+            /* 모바일에서도 카테고리는 무조건 2:2 유지 */
             .tree-section {
                 padding: 10px;
                 gap: 10px;
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .skill-branch {
-                width: 48%;
                 padding: 10px 5px;
-                margin-bottom: 10px;
             }
 
             .skill-title {
@@ -496,21 +494,22 @@
                 padding: 5px 0;
             }
 
+            /* 모바일 노드 사이즈 확대 보정 */
             .node {
-                width: 60px;
-                height: 60px;
+                width: 85px;
+                height: 85px;
                 border-width: 2px;
             }
 
                 .node span {
-                    font-size: 10px;
+                    font-size: 11px;
                     padding: 0 2px;
                 }
 
                 .node .lvl {
-                    font-size: 10px;
+                    font-size: 11px;
                     padding: 1px 4px;
-                    margin-top: 2px;
+                    margin-top: 1px;
                 }
 
                 .node.locked::after {
@@ -631,11 +630,11 @@
 
         function saveGame() {
             const data = { upgrades, equippedHero, currentStage, coins };
-            localStorage.setItem('murimGuardiansSaveV72', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV73', JSON.stringify(data));
         }
 
         function loadGame() {
-            const saved = localStorage.getItem('murimGuardiansSaveV72');
+            const saved = localStorage.getItem('murimGuardiansSaveV73');
             if (saved) {
                 const data = JSON.parse(saved);
                 upgrades = data.upgrades || upgrades;
@@ -647,7 +646,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV72');
+                localStorage.removeItem('murimGuardiansSaveV73');
                 location.reload();
             }
         }
@@ -737,8 +736,7 @@
 
             if (lvl < 10 && coins >= cost) {
                 coins -= cost; upgrades[catId][statKey]++;
-                saveGame();
-                updateUI(); renderPopup();
+                saveGame(); updateUI(); renderPopup();
             }
         }
 
@@ -773,10 +771,10 @@
                     let detail = statDetails[statKey];
                     let isMax = lvl >= 10;
                     let isLocked = idx > 0 && upgrades[cat.id][cat.stats[idx - 1]] < 5;
+                    let cost = detail.base;
 
                     html += `<div class="node-wrapper">`;
 
-                    // 순차 연결선 렌더링 (0->1, 1->2, 2->3)
                     if (idx < cat.stats.length - 1) {
                         let nextLvl = upgrades[cat.id][cat.stats[idx]];
                         let isNextUnlocked = nextLvl >= 5;
@@ -785,23 +783,22 @@
                         let svgShadow = isNextUnlocked ? `drop-shadow(0 0 8px ${lineColor})` : 'none';
 
                         if (idx === 0) {
-                            // 가로선 (0에서 1로)
                             html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                         } else if (idx === 1) {
-                            // 대각선 (1에서 2로)
                             html += `<svg style="position:absolute; top:50%; right:50%; width:100%; height:calc(100% + var(--grid-gap)); z-index:0; overflow:visible; pointer-events:none; filter:${svgShadow};">
                                            <line x1="100%" y1="0" x2="0" y2="100%" stroke="${lineColor}" stroke-width="4"/>
                                          </svg>`;
                         } else if (idx === 2) {
-                            // 가로선 (2에서 3으로)
                             html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                         }
                     }
 
+                    // 가격(💰) 렌더링 포함
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
                                         <span>${detail.name}</span>
                                         <div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div>
                                         <div class="lvl">${lvl}/10</div>
+                                        ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💰 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
                                     </div>
                                  </div>`;
                 });
@@ -921,11 +918,9 @@
             }
         }
 
-        // 역산 매핑(Inverse Coordinate Mapping)을 활용한 모바일 강제 가로모드 좌표계
         function updateMousePos(clientX, clientY) {
             const isPortrait = window.matchMedia("(orientation: portrait)").matches;
             if (isPortrait) {
-                // 화면이 세로일 때, CSS로 캔버스가 90도 회전되었으므로 좌표계를 역전환함
                 mouseX = clientY * (W / window.innerHeight);
                 mouseY = (window.innerWidth - clientX) * (H / window.innerWidth);
             } else {
@@ -938,7 +933,6 @@
         function handleInteract(e) {
             if (e.target !== canvas) return;
 
-            // 게임 오버 상태일 때 재도전 버튼 클릭 판정
             if (gameState === 'gameover') {
                 if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 100 && mouseY <= H / 2 + 190) {
                     location.reload();
@@ -948,7 +942,8 @@
 
             if (gameState !== 'playing') return;
 
-            if (Math.hypot(mouseX - 50, mouseY - 80) <= 30) {
+            // 속도(X2) 배속 버튼 반경 2배 확대 적용 (x=100, y=120, r=60)
+            if (Math.hypot(mouseX - 100, mouseY - 120) <= 60) {
                 isSpeedUp = !isSpeedUp;
                 return;
             }
@@ -1003,21 +998,9 @@
         }
 
         canvas.addEventListener('mousemove', (e) => updateMousePos(e.clientX, e.clientY));
-        canvas.addEventListener('mousedown', (e) => {
-            updateMousePos(e.clientX, e.clientY);
-            handleInteract(e);
-        });
-
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
-
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
-            handleInteract(e);
-        }, { passive: false });
+        canvas.addEventListener('mousedown', (e) => { updateMousePos(e.clientX, e.clientY); handleInteract(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); handleInteract(e); }, { passive: false });
 
         const fpsInterval = 1000 / 60;
         let then = performance.now();
@@ -1052,13 +1035,6 @@
                     if (gameState === 'playing') {
                         if (h0BuffTimer > 0) h0BuffTimer--;
 
-                        let activeHeroObj = heroes.find(h => h.id === equippedHero);
-                        if (heroSlot.activeTimer > 0) {
-                            heroSlot.activeTimer--;
-                            ctx.fillStyle = "rgba(142, 68, 173, 0.2)"; ctx.fillRect(0, 0, W, H);
-                            drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color);
-                        }
-
                         if (isHeroTargeting) {
                             let hoverLaneId = -1;
                             for (let r = 0; r < rows; r++) { if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { hoverLaneId = r; break; } }
@@ -1089,20 +1065,20 @@
                         ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(10, 10, 150, 40);
                         drawText(`[ FPS : ${currentFPS} ]`, 85, 30, 20, "#2ecc71");
 
+                        // X2 배속 버튼 크기 2배 및 위치 이동 보정 (x=100, y=120)
                         ctx.fillStyle = isSpeedUp ? "rgba(231, 76, 60, 0.9)" : "rgba(127, 140, 141, 0.8)";
-                        ctx.beginPath(); ctx.arc(50, 80, 30, 0, Math.PI * 2); ctx.fill();
-                        ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-                        drawText("X2", 50, 80, 22, "white");
+                        ctx.beginPath(); ctx.arc(100, 120, 60, 0, Math.PI * 2); ctx.fill();
+                        ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.stroke();
+                        drawText("X2", 100, 120, 40, "white");
 
-                        ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(W / 2 - 500, 15, 1000, 60);
-                        drawText(`[ 스테이지 ${currentStage} ]`, W / 2 - 350, 45, 30, "#2ecc71");
+                        // 상단 UI 박스 및 텍스트 150px 좌측 밀기
+                        ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(W / 2 - 650, 15, 1100, 60);
+                        drawText(`[ 스테이지 ${currentStage} ]`, W / 2 - 450, 45, 30, "#2ecc71");
 
                         let remainSec = Math.ceil(waveTimer / 60);
                         let waveStr = currentWave === 4 ? "마신왕 결전" : `제 ${currentWave + 1}파 진격 (${remainSec}초)`;
-                        drawText(waveStr, W / 2, 45, 34, "#f39c12");
-                        drawText(`에너지: ${baseEnergy}% 危`, W / 2 + 350, 45, 30, "#ff4757");
-
-                        if (invincibleFrames > 0) drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold");
+                        drawText(waveStr, W / 2 - 100, 45, 34, "#f39c12");
+                        drawText(`에너지: ${baseEnergy}% 危`, W / 2 + 250, 45, 30, "#ff4757");
 
                         let activeBoss = enemies.find(e => e.type === 'boss');
                         if (activeBoss) {
@@ -1218,7 +1194,7 @@
                                 if (!bossSpawned && (waveTimer <= waveDurations[4] * 0.2 || enemiesSpawned >= waveQuotas[4] * 0.8)) {
                                     let lane = lanes[2];
                                     enemies.push({ type: 'boss', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(10000 * stageMulti), maxHp: Math.floor(10000 * stageMulti), speed: 0.19, cd: 0, slowTimer: 0, hitAnim: 0, poisoned: false, reward: 500 });
-                                    bossSpawned = true; showWaveWarning = 75;
+                                    bossSpawned = true; showWaveWarning = 100;
                                 }
                                 if (bossSpawned && enemies.length === 0) { waveState = 'stage_cleared'; waveWaitTimer = 40; }
                             } else {
@@ -1528,7 +1504,9 @@
                         }
 
                         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
-                        drawText("수호맹 대기소", 100, 905, 24, "#aaa", "left");
+
+                        // 대기소 폰트 위로 보정
+                        drawText("수호맹 대기소", 100, 865, 24, "#aaa", "left");
 
                         deck.forEach((char, i) => {
                             const bx = 40 + (i * 140); const slotWidth = 125; const slotHeight = 160;
@@ -1564,6 +1542,7 @@
                         });
 
                         ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
+                        let activeHeroObj = heroes.find(h => h.id === equippedHero);
                         ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 30, 100, 100);
                         drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 45, 32, "white");
 
@@ -1577,20 +1556,31 @@
                             drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 80, 30, "red");
                         }
 
+                        // 최상단 텍스트 및 경고 레이어 표시부 (요청 사항 반영)
+                        if (heroSlot.activeTimer > 0) {
+                            ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H);
+                            drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color);
+                        }
+                        if (invincibleFrames > 0) {
+                            drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold");
+                        }
+                        if (showWaveWarning > 0) {
+                            let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1));
+                            drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`);
+                            showWaveWarning--;
+                        }
+
                         if (timeStopFrames > 0) timeStopFrames--;
                         if (invincibleFrames > 0) invincibleFrames--;
                         frameCount++;
                     } else if (gameState === 'gameover') {
-                        // 캔버스 기반 인게임 게임 오버 화면 및 재도전 버튼 렌더링
                         ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, W, H);
                         drawText(`패배: 스테이지 ${currentStage} 에서 무림의 심장이 멎었습니다`, W / 2, H / 2 - 80, 70, "#ff4757");
                         drawText("남은 코인은 전부 소멸되니, 수호 관청에서 비급을 연마 후 재도전 하시오.", W / 2, H / 2, 35, "#bdc3c7");
                         drawText("危", W / 2, H / 2 - 250, 150, "rgba(255, 71, 87, 0.8)");
 
-                        ctx.fillStyle = "#c0392b";
-                        ctx.fillRect(W / 2 - 180, H / 2 + 100, 360, 90);
-                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4;
-                        ctx.strokeRect(W / 2 - 180, H / 2 + 100, 360, 90);
+                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 100, 360, 90);
+                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 100, 360, 90);
                         drawText("⚔️ 다시 도전하기", W / 2, H / 2 + 145, 40, "white");
                     }
 

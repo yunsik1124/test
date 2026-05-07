@@ -85,11 +85,11 @@
             text-shadow: 1px 1px 2px #000;
         }
 
-        .hud-btn:hover {
-            background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(243, 156, 18, 0.4);
-        }
+            .hud-btn:hover {
+                background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(243, 156, 18, 0.4);
+            }
 
         #upgradePopup {
             display: none;
@@ -99,7 +99,7 @@
             height: 96%;
             max-width: 1920px;
             max-height: 1080px;
-            aspect-ratio: 16 / 9; 
+            aspect-ratio: 16 / 9;
             background: #1a1a1a;
             border: 3px solid #f1c40f;
             border-radius: 12px;
@@ -120,12 +120,12 @@
             margin-bottom: 20px;
         }
 
-        .popup-header h1 {
-            margin: 0;
-            color: #f1c40f;
-            font-size: 32px;
-            text-shadow: 2px 2px 4px #000;
-        }
+            .popup-header h1 {
+                margin: 0;
+                color: #f1c40f;
+                font-size: 32px;
+                text-shadow: 2px 2px 4px #000;
+            }
 
         .header-controls {
             display: flex;
@@ -134,7 +134,10 @@
         }
 
         @keyframes blinkWarning {
-            50% { opacity: 0.5; color: #fff; }
+            50% {
+                opacity: 0.5;
+                color: #fff;
+            }
         }
 
         #gameOverWarning {
@@ -159,7 +162,10 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-        .close-btn:hover { background: #3498db; transform: scale(1.05); }
+            .close-btn:hover {
+                background: #3498db;
+                transform: scale(1.05);
+            }
 
         .hard-reset-btn {
             background: #c0392b;
@@ -173,7 +179,9 @@
             transition: 0.2s;
         }
 
-        .hard-reset-btn:hover { background: #e74c3c; }
+            .hard-reset-btn:hover {
+                background: #e74c3c;
+            }
 
         .popup-body {
             display: flex;
@@ -182,10 +190,23 @@
             overflow: hidden;
         }
 
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #111; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #f1c40f; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #f1c40f;
+            }
 
         .tree-section {
             flex: 3;
@@ -266,51 +287,51 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        .node:hover:not(.locked) {
-            border-color: #f1c40f;
-            transform: scale(1.08) translateY(-2px);
-            box-shadow: 0 6px 15px rgba(241, 196, 15, 0.4);
-        }
+            .node:hover:not(.locked) {
+                border-color: #f1c40f;
+                transform: scale(1.08) translateY(-2px);
+                box-shadow: 0 6px 15px rgba(241, 196, 15, 0.4);
+            }
 
-        .node.max {
-            border-color: #27ae60;
-            box-shadow: 0 0 15px rgba(39, 174, 96, 0.6);
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        }
+            .node.max {
+                border-color: #27ae60;
+                box-shadow: 0 0 15px rgba(39, 174, 96, 0.6);
+                background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            }
 
-        .node.locked {
-            filter: grayscale(100%) brightness(0.4);
-            cursor: not-allowed;
-            border-color: #111;
-        }
+            .node.locked {
+                filter: grayscale(100%) brightness(0.4);
+                cursor: not-allowed;
+                border-color: #111;
+            }
 
-        .node.locked::after {
-            content: '🔒';
-            position: absolute;
-            font-size: 35px;
-            opacity: 0.8;
-        }
+                .node.locked::after {
+                    content: '🔒';
+                    position: absolute;
+                    font-size: 35px;
+                    opacity: 0.8;
+                }
 
-        .node span {
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.1;
-            word-break: keep-all;
-            padding: 0 4px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        }
+            .node span {
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                line-height: 1.1;
+                word-break: keep-all;
+                padding: 0 4px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            }
 
-        .node .lvl {
-            color: #f1c40f;
-            font-size: 14px;
-            margin-top: 4px;
-            font-weight: bold;
-            background: rgba(0,0,0,0.5);
-            padding: 2px 8px;
-            border-radius: 10px;
-        }
+            .node .lvl {
+                color: #f1c40f;
+                font-size: 14px;
+                margin-top: 4px;
+                font-weight: bold;
+                background: rgba(0,0,0,0.5);
+                padding: 2px 8px;
+                border-radius: 10px;
+            }
 
         .hero-section {
             flex: 1;
@@ -323,14 +344,14 @@
             overflow-y: auto;
         }
 
-        .hero-section h2 {
-            color: #f1c40f;
-            margin-top: 0;
-            text-align: center;
-            border-bottom: 2px solid rgba(255,255,255,0.1);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
+            .hero-section h2 {
+                color: #f1c40f;
+                margin-top: 0;
+                text-align: center;
+                border-bottom: 2px solid rgba(255,255,255,0.1);
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
 
         .hero-card {
             background: linear-gradient(180deg, #34495e 0%, #2c3e50 100%);
@@ -342,9 +363,23 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.4);
         }
 
-        .hero-card.equipped { border-color: #2ecc71; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
-        .hero-card h3 { margin: 0 0 8px 0; font-size: 22px; }
-        .hero-card p { font-size: 13px; color: #bdc3c7; margin: 0 0 15px 0; line-height: 1.4; word-break: keep-all; }
+            .hero-card.equipped {
+                border-color: #2ecc71;
+                box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+            }
+
+            .hero-card h3 {
+                margin: 0 0 8px 0;
+                font-size: 22px;
+            }
+
+            .hero-card p {
+                font-size: 13px;
+                color: #bdc3c7;
+                margin: 0 0 15px 0;
+                line-height: 1.4;
+                word-break: keep-all;
+            }
 
         .hero-btn {
             width: 100%;
@@ -356,11 +391,26 @@
             font-size: 16px;
             transition: 0.2s;
         }
-        .btn-buy { background: #e67e22; color: white; border: 1px solid #d35400; }
-        .btn-equipped { background: #7f8c8d; color: white; cursor: default; border: 1px solid #555; }
+
+        .btn-buy {
+            background: #e67e22;
+            color: white;
+            border: 1px solid #d35400;
+        }
+
+        .btn-equipped {
+            background: #7f8c8d;
+            color: white;
+            cursor: default;
+            border: 1px solid #555;
+        }
 
         @media screen and (orientation: portrait) {
-            body { width: 100vw; height: 100vh; }
+            body {
+                width: 100vw;
+                height: 100vh;
+            }
+
             #gameContainer {
                 position: absolute;
                 top: 50%;
@@ -373,32 +423,121 @@
         }
 
         @media screen and (max-height: 600px) and (orientation: landscape), screen and (max-width: 900px), screen and (orientation: portrait) {
-            .hud-panel { top: 5px; right: 50px; padding: 5px 10px; gap: 10px; }
-            .coin-text { font-size: 16px; }
-            .hud-btn { font-size: 12px; padding: 4px 8px; }
-            .popup-header { padding-bottom: 5px; margin-bottom: 10px; }
-            .popup-header h1 { font-size: 18px; }
-            .header-controls { gap: 10px; }
-            .header-controls div { font-size: 14px !important; padding: 4px 8px !important; }
-            .close-btn, .hard-reset-btn { font-size: 12px; padding: 6px 10px; }
-            
-            .tree-section { padding: 10px; gap: 10px; grid-template-columns: repeat(2, 1fr); }
-            .skill-branch { padding: 10px 5px; }
-            .skill-title { font-size: 14px; margin-bottom: 2px; }
-            .skill-desc { font-size: 10px; margin-bottom: 10px; }
-            .nodes-grid { --grid-gap: 15px; padding: 5px 0; }
-            
-            .node { width: 85px; height: 85px; border-width: 2px; }
-            .node span { font-size: 11px; padding: 0 2px; }
-            .node .lvl { font-size: 11px; padding: 1px 4px; margin-top: 1px; }
-            .node.locked::after { font-size: 20px; }
-            
-            .hero-section { padding: 10px; flex: 0.8; }
-            .hero-section h2 { font-size: 16px; padding-bottom: 5px; margin-bottom: 10px; }
-            .hero-card { padding: 10px; margin-bottom: 10px; }
-            .hero-card h3 { font-size: 16px; margin-bottom: 5px; }
-            .hero-card p { font-size: 10px; margin-bottom: 8px; }
-            .hero-btn { font-size: 12px; padding: 8px; }
+            .hud-panel {
+                top: 5px;
+                right: 50px;
+                padding: 5px 10px;
+                gap: 10px;
+            }
+
+            .coin-text {
+                font-size: 16px;
+            }
+
+            .hud-btn {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+
+            .popup-header {
+                padding-bottom: 5px;
+                margin-bottom: 10px;
+            }
+
+                .popup-header h1 {
+                    font-size: 18px;
+                }
+
+            .header-controls {
+                gap: 10px;
+            }
+
+                .header-controls div {
+                    font-size: 14px !important;
+                    padding: 4px 8px !important;
+                }
+
+            .close-btn, .hard-reset-btn {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
+            .tree-section {
+                padding: 10px;
+                gap: 10px;
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .skill-branch {
+                padding: 10px 5px;
+            }
+
+            .skill-title {
+                font-size: 14px;
+                margin-bottom: 2px;
+            }
+
+            .skill-desc {
+                font-size: 10px;
+                margin-bottom: 10px;
+            }
+
+            .nodes-grid {
+                --grid-gap: 15px;
+                padding: 5px 0;
+            }
+
+            .node {
+                width: 85px;
+                height: 85px;
+                border-width: 2px;
+            }
+
+                .node span {
+                    font-size: 11px;
+                    padding: 0 2px;
+                }
+
+                .node .lvl {
+                    font-size: 11px;
+                    padding: 1px 4px;
+                    margin-top: 1px;
+                }
+
+                .node.locked::after {
+                    font-size: 20px;
+                }
+
+            .hero-section {
+                padding: 10px;
+                flex: 0.8;
+            }
+
+                .hero-section h2 {
+                    font-size: 16px;
+                    padding-bottom: 5px;
+                    margin-bottom: 10px;
+                }
+
+            .hero-card {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+                .hero-card h3 {
+                    font-size: 16px;
+                    margin-bottom: 5px;
+                }
+
+                .hero-card p {
+                    font-size: 10px;
+                    margin-bottom: 8px;
+                }
+
+            .hero-btn {
+                font-size: 12px;
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -523,7 +662,7 @@
         let waveTimer = waveDurations[0];
         let enemiesSpawned = 0;
         let showWaveWarning = 0;
-        
+
         let waveState = 'stage_intro';
         let waveWaitTimer = 90;
         let bossSpawned = false;
@@ -616,9 +755,9 @@
 
             skillCategories.forEach(cat => {
                 let html = `<div class="skill-branch">
-                                <div class="skill-title" style="color:${cat.color}">${cat.id}</div>
-                                <div class="skill-desc">${cat.desc}</div>
-                                <div class="nodes-grid">`;
+                                    <div class="skill-title" style="color:${cat.color}">${cat.id}</div>
+                                    <div class="skill-desc">${cat.desc}</div>
+                                    <div class="nodes-grid">`;
 
                 cat.stats.forEach((statKey, idx) => {
                     let lvl = upgrades[cat.id][statKey];
@@ -640,20 +779,20 @@
                             html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                         } else if (idx === 1) {
                             html += `<svg style="position:absolute; top:50%; right:50%; width:100%; height:calc(100% + var(--grid-gap)); z-index:0; overflow:visible; pointer-events:none; filter:${svgShadow};">
-                                       <line x1="100%" y1="0" x2="0" y2="100%" stroke="${lineColor}" stroke-width="4"/>
-                                     </svg>`;
+                                           <line x1="100%" y1="0" x2="0" y2="100%" stroke="${lineColor}" stroke-width="4"/>
+                                         </svg>`;
                         } else if (idx === 2) {
                             html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                         }
                     }
 
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                    <span>${detail.name}</span>
-                                    <div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div>
-                                    <div class="lvl">${lvl}/10</div>
-                                    ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💰 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                </div>
-                             </div>`;
+                                        <span>${detail.name}</span>
+                                        <div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div>
+                                        <div class="lvl">${lvl}/10</div>
+                                        ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💰 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                    </div>
+                                 </div>`;
                 });
                 html += `</div></div>`;
                 treeCon.innerHTML += html;
@@ -668,10 +807,10 @@
                 let btnHtml = isEq ? `<button class="hero-btn btn-equipped" disabled>장착 중</button>` :
                     `<button class="hero-btn btn-buy" ${coins < currentSwapCost ? 'disabled style="background:#555;cursor:not-allowed"' : ''} onclick="buyEquipHero('${h.id}')">${currentSwapCost}💰 교체</button>`;
                 heroCon.innerHTML += `<div class="hero-card ${isEq ? 'equipped' : ''}">
-                                            <h3 style="color:${h.color}">${h.name}</h3>
-                                            <p>${h.desc}</p>
-                                            ${btnHtml}
-                                          </div>`;
+                                                <h3 style="color:${h.color}">${h.name}</h3>
+                                                <p>${h.desc}</p>
+                                                ${btnHtml}
+                                              </div>`;
             });
         }
 
@@ -796,7 +935,7 @@
             if (gameState !== 'playing') return;
 
             // X2 버튼 터치 로직 갱신 (위치: 1780, 130 / 반경: 45)
-            if (Math.hypot(mouseX - 1780, mouseY - 130) <= 45) {
+            if (Math.hypot(mouseX - 1780, mouseY - 170) <= 45) {
                 isSpeedUp = !isSpeedUp;
                 return;
             }
@@ -920,9 +1059,9 @@
 
                         // X2 배속 버튼 (수호 관청 하단 배치, 크기 축소: r=45)
                         ctx.fillStyle = isSpeedUp ? "rgba(231, 76, 60, 0.9)" : "rgba(127, 140, 141, 0.8)";
-                        ctx.beginPath(); ctx.arc(1780, 130, 45, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(1780, 170, 45, 0, Math.PI * 2); ctx.fill();
                         ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.stroke();
-                        drawText("X2", 1780, 130, 30, "white");
+                        drawText("X2", 1780, 170, 30, "white");
 
                         ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(W / 2 - 650, 15, 1100, 60);
                         drawText(`[ 스테이지 ${currentStage} ]`, W / 2 - 450, 45, 30, "#2ecc71");
@@ -1058,7 +1197,7 @@
                                 if (!bossSpawned && (waveTimer <= waveDurations[4] * 0.2 || enemiesSpawned >= waveQuotas[4] * 0.8)) {
                                     let lane = lanes[2];
                                     enemies.push({ type: 'boss', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(10000 * stageMulti), maxHp: Math.floor(10000 * stageMulti), speed: 0.19, cd: 0, slowTimer: 0, hitAnim: 0, poisoned: false, reward: 500 });
-                                    bossSpawned = true; showWaveWarning = 150; 
+                                    bossSpawned = true; showWaveWarning = 150;
                                 }
                                 if (bossSpawned && enemies.length === 0) { waveState = 'stage_cleared'; waveWaitTimer = 120; }
                             } else {
@@ -1075,16 +1214,16 @@
                                     enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(eHp * stageMulti), maxHp: Math.floor(eHp * stageMulti), slowTimer: 0, speed: eSpeed, damage: Math.floor(eDmg * stageMulti), color: eColor, range: eRange, isRanged: eIsRanged, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: finalReward });
                                     enemiesSpawned++;
                                 }
-                                if (waveTimer <= 0) { 
-                                    currentWave++; 
-                                    waveState = 'wave_intro'; 
-                                    waveWaitTimer = 90; 
+                                if (waveTimer <= 0) {
+                                    currentWave++;
+                                    waveState = 'wave_intro';
+                                    waveWaitTimer = 90;
                                 }
                             }
                         } else if (waveState === 'stage_cleared') {
                             waveWaitTimer--;
                             if (waveWaitTimer <= 0) {
-                                currentStage++; currentWave = 0; bossSpawned = false; enemiesSpawned = 0; baseEnergy = 100; 
+                                currentStage++; currentWave = 0; bossSpawned = false; enemiesSpawned = 0; baseEnergy = 100;
                                 waveState = 'stage_intro'; waveWaitTimer = 90;
                                 saveGame();
                             }
@@ -1364,7 +1503,7 @@
                         }
 
                         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
-                        
+
                         drawText("수호맹 대기소", 100, 865, 24, "#aaa", "left");
 
                         deck.forEach((char, i) => {

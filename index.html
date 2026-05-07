@@ -935,7 +935,7 @@
             if (gameState !== 'playing') return;
 
             // X2 버튼 터치 로직 갱신 (위치: 1780, 130 / 반경: 45)
-            if (Math.hypot(mouseX - 1780, mouseY - 170) <= 45) {
+            if (Math.hypot(mouseX - 1780, mouseY - 215) <= 45) {
                 isSpeedUp = !isSpeedUp;
                 return;
             }
@@ -1059,9 +1059,9 @@
 
                         // X2 배속 버튼 (수호 관청 하단 배치, 크기 축소: r=45)
                         ctx.fillStyle = isSpeedUp ? "rgba(231, 76, 60, 0.9)" : "rgba(127, 140, 141, 0.8)";
-                        ctx.beginPath(); ctx.arc(1780, 170, 45, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(1780, 215, 45, 0, Math.PI * 2); ctx.fill();
                         ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.stroke();
-                        drawText("X2", 1780, 170, 30, "white");
+                        drawText("X2", 1780, 215, 30, "white");
 
                         ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(W / 2 - 650, 15, 1100, 60);
                         drawText(`[ 스테이지 ${currentStage} ]`, W / 2 - 450, 45, 30, "#2ecc71");

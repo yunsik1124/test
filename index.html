@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V13.0 - UX/UI 및 회복 로직 최적화</title>
+    <title>강철의 난: 무림수호맹 V13.1 - UX/UI 및 회복 로직 최적화</title>
     <style>
+        /* 용병 선택 시 버튼 딤드 처리 스타일 */
+        .merc-btn.dimmed {
+            filter: grayscale(100%) brightness(0.5); /* 흑백 및 어둡게 처리 */
+            opacity: 0.5; /* 반투명 처리 */
+            cursor: not-allowed; /* 클릭 불가 커서 */
+            pointer-events: none; /* 클릭 이벤트 차단 */
+            animation: none !important; /* 반짝이는 애니메이션 중지 */
+        }
         /* === 기본 인게임 스타일 === */
         body {
             margin: 0;
@@ -23,73 +31,72 @@
         }
 
         #gameContainer {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
         }
 
-        canvas {
+        /* 1920x1080 표준 규격 레이어 통합 및 정중앙 고정 */
+        #gameCanvas, #uiLayer, .screen {
+            position: absolute;
+            width: 1920px;
+            height: 1080px;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            transform: translate(-50%, -50%);
+        }
+
+        #gameCanvas {
             background-color: #e8e6d9;
-            max-width: 100%;
-            max-height: 100%;
-            aspect-ratio: 16 / 9;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            cursor: pointer;
         }
 
         #uiLayer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            z-index: 10;
             pointer-events: none;
-            display: flex;
+        }
+
+        .screen {
+            z-index: 1000;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            display: none;
+            background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
+            pointer-events: auto;
+            display: none; /* 스크린 기본 숨김 처리 */
+            box-sizing: border-box;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
-        /* === 반응형 강제 가로모드 (Portrait 대응) === */
-        @media screen and (orientation: portrait) {
-            body {
-                width: 100vw;
-                height: 100vh;
-            }
-
-            #gameContainer {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 100vh;
-                height: 100vw;
-                transform: translate(-50%, -50%) rotate(90deg);
-                transform-origin: center center;
-            }
+        /* 모바일에서 텍스트가 너무 작아 보이지 않게 기본 폰트 크기 보정 추가 */
+        h1 {
+            font-size: 100px;
+            color: #f1c40f;
+            margin: 0;
         }
 
-        /* HUD 및 팝업 */
+        /* HUD 및 팝업 (크기 상향) */
         .hud-panel {
             position: absolute;
-            top: 10px;
+            top: 15px;
             right: 20px;
             background: rgba(0,0,0,0.85);
             border: 2px solid #f1c40f;
-            padding: 8px 16px;
+            padding: 12px 24px; /* 크기 상향 */
             border-radius: 8px;
             pointer-events: auto;
             display: flex;
-            gap: 20px;
+            gap: 25px; /* 간격 상향 */
             align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             z-index: 10;
         }
 
         .coin-text {
-            font-size: 20px;
+            font-size: 24px; /* 폰트 상향 */
             font-weight: bold;
             color: #f1c40f;
             text-shadow: 1px 1px 3px #000;
@@ -102,8 +109,8 @@
             background: linear-gradient(180deg, #e67e22 0%, #d35400 100%);
             color: white;
             border: 1px solid #f39c12;
-            padding: 8px 16px;
-            font-size: 18px;
+            padding: 12px 24px; /* 패딩 상향 */
+            font-size: 22px; /* 폰트 상향 */
             cursor: pointer;
             font-weight: bold;
             border-radius: 5px;
@@ -120,8 +127,8 @@
         /* 중간 보스 UI */
         #midBossUI {
             position: absolute;
-            top: 15px;
-            right: 430px;
+            top: 20px;
+            right: 550px; /* 위치 조정 */
             display: none;
             z-index: 100;
             pointer-events: auto;
@@ -149,9 +156,9 @@
             color: white;
             border: 2px solid #e74c3c;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 24px;
+            width: 60px; /* 상향 */
+            height: 60px; /* 상향 */
+            font-size: 28px; /* 상향 */
             cursor: pointer;
             animation: pulseAlert 1.2s infinite;
             display: flex;
@@ -167,38 +174,38 @@
         #midBossPrompt {
             display: none;
             position: absolute;
-            top: 60px;
+            top: 70px;
             right: 0;
             background: rgba(20, 20, 20, 0.95);
             border: 2px solid #e74c3c;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
-            width: 250px;
+            width: 280px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.8);
         }
 
         .mid-boss-prompt-text {
             color: #fff;
-            font-size: 14px;
+            font-size: 16px; /* 상향 */
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             line-height: 1.4;
         }
 
         .mid-boss-btn-group {
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 20px;
         }
 
         .mb-btn {
-            width: 50px;
-            height: 35px;
+            width: 60px;
+            height: 40px;
             border: none;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             cursor: pointer;
             color: white;
             transition: 0.2s;
@@ -610,29 +617,7 @@
             font-size: 15px;
         }
 
-        /* === 스크린 분리 (가로모드 Full HD 대응) === */
-        .screen {
-            position: absolute;
-            inset: 0;
-            margin: auto;
-            width: 100%;
-            height: 100%;
-            max-width: 1920px;
-            max-height: 1080px;
-            aspect-ratio: 16 / 9;
-            background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            display: none;
-            pointer-events: auto;
-            box-sizing: border-box;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(0,0,0,0.9);
-        }
-
+        /* 타이틀 스크린 */
         #titleScreen h1 {
             font-size: 120px;
             color: #f1c40f;
@@ -827,14 +812,14 @@
                 color: #fff;
             }
 
-        /* === 용병모집 및 버프 가로 배치 UI === */
+        /* === 용병모집 및 버프 가로 배치 UI (상단 크기 상향) === */
         .top-ui-wrapper {
             position: absolute;
             left: 20px;
-            top: 10px;
+            top: 15px;
             display: flex;
             align-items: flex-start;
-            gap: 15px;
+            gap: 20px;
             z-index: 10;
             pointer-events: none;
             width: auto;
@@ -843,9 +828,9 @@
         #mercenaryUI {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px; /* 상향 */
             background: rgba(0,0,0,0.85);
-            padding: 8px 15px;
+            padding: 12px 20px; /* 상향 */
             border: 2px solid #00d2d3;
             border-radius: 10px;
             pointer-events: auto;
@@ -857,15 +842,15 @@
         .merc-title {
             color: #0abde3;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 22px; /* 상향 */
             text-shadow: 0 0 5px #0abde3;
             text-align: center;
             line-height: 1.2;
         }
 
         .merc-gauge-container {
-            width: 160px;
-            height: 25px;
+            width: 190px; /* 상향 */
+            height: 30px; /* 상향 */
             background: #222;
             border: 2px solid #00d2d3;
             border-radius: 15px;
@@ -886,15 +871,15 @@
         }
 
         .merc-slot {
-            width: 45px;
-            height: 45px;
+            width: 55px; /* 상향 */
+            height: 55px; /* 상향 */
             background: #111;
             border: 2px solid #f1c40f;
             border-radius: 8px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 28px; /* 상향 */
             box-shadow: inset 0 0 10px #000;
         }
 
@@ -909,9 +894,9 @@
             background: #111;
             color: #0abde3;
             border: 2px solid #00d2d3;
-            width: 70px;
-            height: 70px;
-            font-size: 15px;
+            width: 85px; /* 상향 */
+            height: 85px; /* 상향 */
+            font-size: 18px; /* 상향 */
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
@@ -948,9 +933,9 @@
         #mercTraitInfo {
             display: none;
             position: absolute;
-            top: 75px;
+            top: 95px;
             color: #f1c40f;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             text-shadow: 1px 1px 3px #000;
             pointer-events: none;
@@ -961,19 +946,19 @@
         #buffListUI {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
             pointer-events: auto;
-            max-width: 515px;
-            margin-top: 22px;
+            max-width: 600px;
+            margin-top: 25px; /* 상향 */
         }
 
         .buff-icon {
             background: rgba(39, 174, 96, 0.85);
             border: 2px solid #2ecc71;
             border-radius: 6px;
-            width: 44px;
-            height: 44px;
+            width: 55px; /* 상향 */
+            height: 55px; /* 상향 */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -1020,7 +1005,7 @@
         #wavePassBtn {
             position: absolute;
             left: 20px;
-            bottom: 170px;
+            bottom: 220px;
             width: 80px;
             height: 80px;
             background: rgba(0, 0, 0, 0.85);
@@ -1061,7 +1046,7 @@
         #speedUpBtn {
             position: absolute;
             left: 20px;
-            bottom: 260px;
+            bottom: 310px;
             width: 80px;
             height: 80px;
             background: rgba(0, 0, 0, 0.85);
@@ -1127,8 +1112,8 @@
 
             <div class="hud-panel">
                 <div class="coin-text">
-                    <div style="font-size:16px;">⚔️ 전투 코인: <span id="battleCoinCount" style="color:white;">500</span></div>
-                    <div style="font-size:16px;">💎 천기 영석: <span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
+                    <div style="font-size:20px;">⚔️ 전투 코인: <span id="battleCoinCount" style="color:white;">500</span></div>
+                    <div style="font-size:20px;">💎 천기 영석: <span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
                 </div>
                 <button class="hud-btn" onclick="togglePopup(true)">수호 관청 (비급/영웅)</button>
             </div>
@@ -1176,7 +1161,6 @@
                 <button class="arrow-btn" onclick="changeHero(-1)">&#10094;</button>
                 <div class="hero-showcase" id="heroShowcaseDiv" onclick="confirmHeroSelection()">
                     <div style="color:rgba(255,255,255,0.3); font-size:24px; position:absolute; top:20px;">[ Spine Live 2D Area ]</div>
-
                     <div id="heroNameDisplay" style="color:#fff;">영웅 이름</div>
                     <div id="heroDescDisplay">영웅 설명</div>
                 </div>
@@ -1208,7 +1192,8 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const W = 1920; const H = 1080;
+        const W = 1920;
+        const H = 1080;
 
         let battleCoins = 500;
         let metaCoins = 0;
@@ -1217,6 +1202,61 @@
         let currentMaxStage = 1;
         let isSpeedUp = false;
         let h0BuffTimer = 0;
+
+        // [비급] 통합 리사이즈 시스템 (타이틀/로비 정렬 해결책 적용 완료)
+        function resizeGame() {
+            const targets = [
+                canvas,
+                document.getElementById('uiLayer'),
+                ...document.querySelectorAll('.screen')
+            ];
+
+            let winW = window.innerWidth;
+            let winH = window.innerHeight;
+            let rotation = 0;
+
+            if (winH > winW) {
+                rotation = 90;
+                let temp = winW;
+                winW = winH;
+                winH = temp;
+            }
+
+            const scale = Math.min(winW / 1920, winH / 1080);
+
+            targets.forEach(el => {
+                if (el) {
+                    el.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
+                    el.style.top = "50%";
+                    el.style.left = "50%";
+                }
+            });
+        }
+
+        // 장면 전환 함수 단일화
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+            document.getElementById('uiLayer').style.display = 'none';
+            canvas.style.display = 'none';
+
+            if (screenId === '') {
+                canvas.style.display = 'block';
+                document.getElementById('uiLayer').style.display = 'block';
+            } else {
+                const target = document.getElementById(screenId);
+                if (target) target.style.display = 'flex';
+            }
+
+            if (screenId === 'heroSelectScreen') updateHeroCarousel();
+            if (screenId === 'regionSelectScreen') updateMapNodes();
+
+            setTimeout(resizeGame, 10);
+        }
+
+        // 중복 없이 리스너 등록
+        window.addEventListener('resize', resizeGame);
+        window.addEventListener('load', resizeGame);
+        window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
 
         const skillCategories = [
             { id: '수호 공통 내공', color: '#2ecc71', desc: '모든 수호자의 기초 생존력 강화', stats: ['hp', 'def', 'regenHP', 'respawnReduc'] },
@@ -1265,7 +1305,6 @@
             { id: 6, name: '당문암기', role: '직선독원거리', cost: 120, attackType: 'ranged', projType: 'straight', range: 1015, damage: 15, color: '#8e44ad', cd: 0, maxCd: 21, hp: 70, maxHp: 70, state: 'ready', timer: 0, accuracy: 1.0, showRangeTimer: 0, poison: true, renderOffsetX: 0, jumpAnim: 0, friendlyFire: true },
             { id: 7, name: '사파혈비도', role: '직선관통', cost: 160, attackType: 'ranged', projType: 'pierce', range: 870, damage: 16, color: '#9b59b6', cd: 0, maxCd: 50, hp: 120, maxHp: 120, state: 'ready', timer: 0, knockback: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, lungeDist: 0, friendlyFire: false },
             { id: 5, name: '사파벽력탄', role: '곡선광역', cost: 200, attackType: 'ranged', projType: 'parabola', range: 600, damage: 150, color: '#e74c3c', cd: 0, maxCd: 58, hp: 80, maxHp: 80, state: 'ready', timer: 0, accuracy: 0.6, aoe: true, aoeRadius: 180, friendlyFire: true, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 },
-            { id: 8, name: '북해빙궁주', role: '결빙빔', cost: 150, attackType: 'ranged', projType: 'beam', range: 1000, damage: 30, color: '#00cec9', cd: 0, maxCd: 45, hp: 60, maxHp: 60, state: 'ready', timer: 0, accuracy: 1.0, aoe: false, slow: true, friendlyFire: true, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 },
             { id: 9, name: '묘강독선', role: '광역힐러', cost: 200, attackType: 'heal', range: 300, healAmount: 50, color: '#2ecc71', cd: 0, maxCd: 33, hp: 80, maxHp: 80, state: 'ready', timer: 0, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 }
         ];
         deck.sort((a, b) => a.cost - b.cost);
@@ -1298,12 +1337,12 @@
 
         function saveGame() {
             const data = { upgrades, heroes, equippedHero, currentMaxStage, metaCoins };
-            localStorage.setItem('murimGuardiansSaveV13_0', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV13_1', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('murimGuardiansSaveV13_0');
+                const saved = localStorage.getItem('murimGuardiansSaveV13_1');
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.upgrades) upgrades = data.upgrades;
@@ -1317,7 +1356,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV13_0');
+                localStorage.removeItem('murimGuardiansSaveV13_1');
                 location.reload();
             }
         }
@@ -1386,15 +1425,6 @@
         function declineMidBoss() {
             document.getElementById('midBossUI').style.display = 'none';
             document.getElementById('midBossPrompt').style.display = 'none';
-        }
-
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
-            document.getElementById('uiLayer').style.display = 'none';
-            document.getElementById('gameCanvas').style.display = 'none';
-            if (screenId) document.getElementById(screenId).style.display = 'flex';
-            if (screenId === 'heroSelectScreen') updateHeroCarousel();
-            if (screenId === 'regionSelectScreen') updateMapNodes();
         }
 
         function updateHeroCarousel() {
@@ -1500,8 +1530,6 @@
 
             updateUI();
             showScreen('');
-            document.getElementById('gameCanvas').style.display = 'block';
-            document.getElementById('uiLayer').style.display = 'block';
         }
 
         function updateUI() {
@@ -1590,10 +1618,10 @@
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                            <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                            ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                            ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                        </div></div>`;
+                                                    <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
+                                                    ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                                    ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
+                                                </div></div>`;
                 });
                 html += `</div></div>`; treeCon.innerHTML += html;
             });
@@ -1601,14 +1629,14 @@
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
             heroContainer.innerHTML = `
-                        <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                        <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                            <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                            <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                        </div>
-                        <div class="hero-desc-box">${activeH.desc}</div>
-                        <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                    `;
+                                <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
+                                <div class="hero-live2d-box" style="border-color:${activeH.color};">
+                                    <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
+                                    <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
+                                </div>
+                                <div class="hero-desc-box">${activeH.desc}</div>
+                                <div class="hero-upgrades" id="popupHeroUpgrades"></div>
+                            `;
 
             let upgsHtml = "";
             let upgTypes = [
@@ -1622,14 +1650,14 @@
                 let isMax = clvl >= 10;
                 let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
                 upgsHtml += `
-                            <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                                <div class="hero-upg-circle">Lv.${clvl}</div>
-                                <div class="hero-upg-info">
-                                    <div class="hero-upg-name">${u.name}</div>
-                                    <div class="hero-upg-desc">${u.desc}</div>
-                                </div>
-                                <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                            </button>`;
+                                    <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
+                                        <div class="hero-upg-circle">Lv.${clvl}</div>
+                                        <div class="hero-upg-info">
+                                            <div class="hero-upg-name">${u.name}</div>
+                                            <div class="hero-upg-desc">${u.desc}</div>
+                                        </div>
+                                        <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
+                                    </button>`;
             });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
@@ -1702,34 +1730,76 @@
                 icon.className = 'buff-icon';
                 icon.style.borderColor = b.isAtk ? '#e74c3c' : '#3498db';
                 icon.style.background = b.isAtk ? 'rgba(192, 57, 43, 0.85)' : 'rgba(41, 128, 185, 0.85)';
-                icon.innerHTML = `<span style="font-size:16px;">${b.icon}</span><span style="font-size:11px; color:#f1c40f;">${b.val}%</span>`;
+                icon.innerHTML = `<span style="font-size:22px;">${b.icon}</span><span style="font-size:14px; color:#f1c40f;">${b.val}%</span>`;
                 container.appendChild(icon);
             });
         }
 
         function activateMercenary() {
             if (gameState !== 'playing') return;
+
             let btn = document.getElementById('mercBtn');
+
+            // [1단계] 게이지가 꽉 차서 '가동' 가능 상태일 때 (슬롯 돌리기 시작)
             if (mercState === 'ready') {
-                mercState = 'spinning'; glitchGauge = 0; updateMercUI();
-                btn.innerHTML = "모집중"; btn.classList.remove('ready'); document.getElementById('mercTraitInfo').style.display = 'none';
-                mercSpinFrames = 180;
-                let rand = Math.random(); let rands = []; mercRewardType = Math.random() < 0.30 ? 'buff' : 'merc'; mercFinalTier = 0;
+                mercState = 'spinning';
+                glitchGauge = 0;
+                updateMercUI();
+
+                btn.innerHTML = "모집중";
+                btn.classList.remove('ready');
+                document.getElementById('mercTraitInfo').style.display = 'none';
+
+                mercSpinFrames = 180; // 약 3초간 회전 연출
+
+                let rand = Math.random();
+                let rands = [];
+                mercRewardType = Math.random() < 0.30 ? 'buff' : 'merc'; // 30% 확률로 영구 버프, 70% 확률로 용병 유닛
+                mercFinalTier = 0;
+
+                // 결과 티어 결정 (확률 로직)
                 if (rand < 0.50) { rands = [0, 1, 2, 3]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 1; }
                 else if (rand < 0.80) { rands = [0, 0, 1, 2]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 2; }
                 else if (rand < 0.95) { rands = [0, 0, 0, 1]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 3; }
                 else { rands = [0, 0, 0, 0]; mercFinalTier = 4; }
+
                 let iconOffset = Math.floor(Math.random() * 4);
-                mercFinalIcons = [(rands[0] + iconOffset) % 4, (rands[1] + iconOffset) % 4, (rands[2] + iconOffset) % 4, (rands[3] + iconOffset) % 4];
-            } else if (mercState === 'rewarded') {
+                mercFinalIcons = [
+                    (rands[0] + iconOffset) % 4,
+                    (rands[1] + iconOffset) % 4,
+                    (rands[2] + iconOffset) % 4,
+                    (rands[3] + iconOffset) % 4
+                ];
+            }
+
+            // [2단계] 슬롯이 멈추고 결과가 나왔을 때 (클릭 시 보상 수령)
+            else if (mercState === 'rewarded') {
                 if (pendingMerc) {
+                    // A. 결과가 '버프'인 경우: 즉시 적용 후 다시 충전 상태로
                     if (pendingMerc.type === 'buff') {
-                        if (pendingMerc.buffType === 'atk') mercBuffAtk += pendingMerc.value; else mercBuffSpd += pendingMerc.value;
-                        activeBuffsLog.push({ isAtk: pendingMerc.buffType === 'atk', icon: pendingMerc.buffType === 'atk' ? '⚔️' : '💨', val: Math.round(pendingMerc.value * 100) });
+                        if (pendingMerc.buffType === 'atk') mercBuffAtk += pendingMerc.value;
+                        else mercBuffSpd += pendingMerc.value;
+
+                        activeBuffsLog.push({
+                            isAtk: pendingMerc.buffType === 'atk',
+                            icon: pendingMerc.buffType === 'atk' ? '⚔️' : '💨',
+                            val: Math.round(pendingMerc.value * 100)
+                        });
+
                         renderBuffIcons();
-                        createFloatingText(W / 2, H / 2, pendingMerc.name, "#f1c40f", true); shakeFrames = 5;
-                        pendingMerc = null; mercState = 'charging'; updateMercUI();
-                    } else { selectedInvenIdx = 'merc'; }
+                        createFloatingText(W / 2, H / 2, pendingMerc.name, "#f1c40f", true);
+                        shakeFrames = 5;
+
+                        pendingMerc = null;
+                        mercState = 'charging';
+                        updateMercUI();
+                    }
+                    // B. 결과가 '용병'인 경우: 배치 모드로 진입하고 버튼 딤드 처리
+                    else {
+                        selectedInvenIdx = 'merc'; // 배치 대상 모드를 '용병'으로 설정
+                        btn.classList.add('dimmed'); // 버튼을 어둡게 만들어 선택됨을 표시
+                        createFloatingText(W / 2, H / 2 + 100, "배치할 위치를 선택하시오!", "#0abde3", false);
+                    }
                 }
             }
         }
@@ -1748,56 +1818,125 @@
 
         function handleInteract(e) {
             if (e && e.target !== canvas) return;
+
+            // [1] 게임 오버 상태일 때: 타이틀로 귀환 처리
             if (gameState === 'gameover') {
-                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 90 && mouseY <= H / 2 + 180) { showScreen('titleScreen'); }
+                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 90 && mouseY <= H / 2 + 180) {
+                    showScreen('titleScreen');
+                }
                 return;
             }
+
             if (gameState !== 'playing') return;
 
+            // [2] 히어로 스킬 타겟팅 모드일 때: 라인 선택 처리
             if (isHeroTargeting) {
                 let clickedLaneId = -1;
-                for (let r = 0; r < rows; r++) { if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { clickedLaneId = r; break; } }
+                for (let r = 0; r < rows; r++) {
+                    if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { clickedLaneId = r; break; }
+                }
                 if (clickedLaneId !== -1) triggerHeroSkill('h2', clickedLaneId);
-                isHeroTargeting = false; return;
+                isHeroTargeting = false;
+                return;
             }
 
-            if (mouseY > 880) { // Y축 30% 영역 확보 상향 조정
-                const slotWidth = 125; const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+            // [3] 하단 UI 영역 (인벤토리 및 히어로 슬롯) 클릭 처리
+            if (mouseY > 880) {
+                const slotWidth = 125;
+                const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+
+                // 일반 유닛 덱 클릭 시
                 for (let i = 0; i < deck.length; i++) {
                     const bx = deckStartX + (i * slotWidth);
                     if (mouseX >= bx && mouseX <= bx + slotWidth && mouseY >= 910 && mouseY <= 1070) {
-                        if (deck[i].state === 'ready') selectedInvenIdx = (selectedInvenIdx === i) ? -1 : i; return;
+                        // 용병 배치를 취소하고 일반 유닛을 선택할 경우 딤드 해제
+                        document.getElementById('mercBtn').classList.remove('dimmed');
+
+                        if (deck[i].state === 'ready') {
+                            selectedInvenIdx = (selectedInvenIdx === i) ? -1 : i;
+                        }
+                        return;
                     }
                 }
+
+                // 히어로 슬롯 클릭 시
                 if (mouseX >= heroSlot.x && mouseX <= heroSlot.x + heroSlot.w && mouseY >= heroSlot.y && mouseY <= heroSlot.y + heroSlot.h) {
                     if (heroSlot.cd <= 0 && heroSlot.activeTimer <= 0) {
                         let activeHeroData = heroes.find(h => h.id === equippedHero);
-                        if (activeHeroData.id === 'h2') isHeroTargeting = true; else triggerHeroSkill(activeHeroData.id, null);
+                        if (activeHeroData.id === 'h2') isHeroTargeting = true;
+                        else triggerHeroSkill(activeHeroData.id, null);
                     }
                     return;
                 }
                 return;
             }
 
+            // [4] 전장 필드 슬롯 클릭 처리 (배치 및 회수)
             for (let i = 0; i < fieldSlots.length; i++) {
                 const s = fieldSlots[i];
                 if (Math.hypot(mouseX - s.x, mouseY - s.y) < 60) {
-                    if (s.char) {
-                        if (s.char.id === 999) return;
-                        s.char.state = 'waiting'; s.char.timer = 125; s.char.showRangeTimer = 0; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.pendingStrike = null; s.char = null; selectedInvenIdx = -1;
-                    } else if (selectedInvenIdx !== -1) {
-                        if (s.zone === 'unbuildable') { createFloatingText(s.x, s.y, "배치 불가 지역!", "#e74c3c", false); selectedInvenIdx = -1; return; }
 
+                    // A. 이미 유닛이 있는 경우: 유닛 회수 (철수)
+                    if (s.char) {
+                        if (s.char.id === 999) return; // 특수 유닛 회수 불가
+                        s.char.state = 'waiting';
+                        s.char.timer = 125; // 재배치 대기시간
+                        s.char.showRangeTimer = 0;
+                        s.char.strikeAnim = 0;
+                        s.char.jumpAnim = 0;
+                        s.char.pendingStrike = null;
+                        s.char = null; // 슬롯 비우기
+                        selectedInvenIdx = -1;
+                    }
+
+                    // B. 유닛 배치를 시도하는 경우 (선택된 인덱스가 있을 때)
+                    else if (selectedInvenIdx !== -1) {
+                        // 설치 불가 지역 체크
+                        if (s.zone === 'unbuildable') {
+                            createFloatingText(s.x, s.y, "배치 불가 지역!", "#e74c3c", false);
+                            selectedInvenIdx = -1;
+                            document.getElementById('mercBtn').classList.remove('dimmed');
+                            return;
+                        }
+
+                        // [B-1] 용병 유닛 배치
                         if (selectedInvenIdx === 'merc') {
                             s.char = JSON.parse(JSON.stringify(pendingMerc));
-                            s.char.state = 'deployed'; s.char.cd = 0; s.char.showRangeTimer = 75; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.hp = getBase('hp', s.char.maxHp);
-                            selectedInvenIdx = -1; mercState = 'charging'; updateMercUI();
-                        } else {
-                            let c = deck[selectedInvenIdx]; let finalCost = getActualCost(c);
+                            s.char.state = 'deployed';
+                            s.char.cd = 0;
+                            s.char.showRangeTimer = 75;
+                            s.char.strikeAnim = 0;
+                            s.char.jumpAnim = 0;
+                            s.char.hp = getBase('hp', s.char.maxHp);
+
+                            selectedInvenIdx = -1;
+                            mercState = 'charging'; // 충전 모드로 복귀
+
+                            // 핵심: 용병 버튼 딤드 해제 및 UI 갱신
+                            const mBtn = document.getElementById('mercBtn');
+                            if (mBtn) mBtn.classList.remove('dimmed');
+                            updateMercUI();
+                        }
+
+                        // [B-2] 일반 유닛 배치
+                        else {
+                            let c = deck[selectedInvenIdx];
+                            let finalCost = getActualCost(c);
+
                             if (battleCoins >= finalCost) {
-                                battleCoins -= finalCost; updateUI();
-                                s.char = c; s.char.state = 'deployed'; s.char.cd = 0; s.char.showRangeTimer = 75; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.hp = getBase('hp', c.maxHp); selectedInvenIdx = -1;
-                            } else { createFloatingText(s.x, s.y, "전투 코인 부족!", "#e74c3c", false); }
+                                battleCoins -= finalCost;
+                                updateUI();
+                                s.char = c;
+                                s.char.state = 'deployed';
+                                s.char.cd = 0;
+                                s.char.showRangeTimer = 75;
+                                s.char.strikeAnim = 0;
+                                s.char.jumpAnim = 0;
+                                s.char.hp = getBase('hp', c.maxHp);
+                                selectedInvenIdx = -1;
+                            } else {
+                                createFloatingText(s.x, s.y, "전투 코인 부족!", "#e74c3c", false);
+                            }
                         }
                     }
                     return;
@@ -1895,7 +2034,7 @@
                         } else {
                             document.getElementById('mercGaugeFill').style.filter = "none";
                             let btn = document.getElementById('mercBtn');
-                            btn.style.filter = "none"; btn.style.pointerEvents = "auto";
+                         
                         }
 
                         let wavePassBtn = document.getElementById('wavePassBtn');
@@ -1970,7 +2109,7 @@
                                     let fillColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.3)" : "rgba(231, 76, 60, 0.3)"; let strokeColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.9)" : "rgba(231, 76, 60, 0.9)";
                                     ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 3;
 
-                                    if (charData.id === 101) { // 사정거리 표기 개선: 북해빙궁주(8) 제외
+                                    if (charData.id === 101) {
                                         ctx.fillRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70);
                                         ctx.strokeRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70);
                                     } else if (charData.attackType === 'heal' || (charData.attackType === 'melee' && charData.role !== '탱커')) {
@@ -1982,7 +2121,6 @@
                             }
 
                             if (s.char) {
-                                // 초당 회복 로직 개선 (1초마다, 최소 1보장)
                                 if (s.char.id !== 999 && timeStopFrames <= 0 && frameCount % 60 === 0) {
                                     let regenAmount = getBase('regenHP', 0);
                                     if (regenAmount > 0) {
@@ -2016,7 +2154,7 @@
 
                                 if (s.char.showRangeTimer > 0) {
                                     let fillColor = s.char.attackType === 'heal' ? "rgba(46, 204, 113, 0.15)" : "rgba(231, 76, 60, 0.15)"; ctx.fillStyle = fillColor;
-                                    if (s.char.id === 101) { // 사정거리 표기 개선: 북해빙궁주(8) 제외
+                                    if (s.char.id === 101) {
                                         ctx.fillRect(s.x - s.char.range, s.y - rowHeight - 35, s.char.range * 2, (rowHeight * 2) + 70);
                                     } else if (s.char.attackType === 'heal' || (s.char.attackType === 'melee' && s.char.role !== '탱커')) {
                                         ctx.beginPath(); ctx.arc(s.x, s.y, s.char.range, 0, Math.PI * 2); ctx.fill();
@@ -2414,7 +2552,7 @@
 
                         for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-                        // UI 렌더링 (Y축 30% 영역 확보 상향 조정 반영)
+                        // UI 렌더링 (하단 슬롯)
                         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
 
                         ctx.fillStyle = "rgba(0,0,0,0.8)";

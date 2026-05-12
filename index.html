@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V12.2 - 1황의 묘수</title>
+    <title>강철의 난: 무림수호맹 V12.3 - 텍스트 보상 인지 강화</title>
     <style>
         /* === 기본 인게임 스타일 === */
         body {
@@ -967,7 +967,7 @@
                 font-size: 60px;
                 color: #2ecc71;
                 text-shadow: 0 0 20px #2ecc71;
-                margin-bottom: 50px;
+                margin-bottom: 20px;
             }
 
         .vic-btn-group {
@@ -1115,6 +1115,7 @@
 
             <div id="victoryOverlay">
                 <h2 id="victoryTitle">🏆 관문 돌파 성공! 🏆</h2>
+                <div id="victoryRewardText" style="font-size: 24px; color: #bdc3c7; margin-bottom: 40px; text-align: center; line-height: 1.5;"></div>
                 <div class="vic-btn-group">
                     <button class="btn-large" style="background:linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); border-color:#2ecc71;" onclick="goToNextStage()">다음 관문 돌파</button>
                     <button class="btn-large" style="background:linear-gradient(135deg, #2980b9 0%, #3498db 100%); border-color:#3498db;" onclick="goToLobby()">로비로 귀환</button>
@@ -1255,12 +1256,12 @@
 
         function saveGame() {
             const data = { upgrades, heroes, equippedHero, currentMaxStage, metaCoins };
-            localStorage.setItem('murimGuardiansSaveV12_2', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV12_3', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('murimGuardiansSaveV12_2');
+                const saved = localStorage.getItem('murimGuardiansSaveV12_3');
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.upgrades) upgrades = data.upgrades;
@@ -1274,7 +1275,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV12_2');
+                localStorage.removeItem('murimGuardiansSaveV12_3');
                 location.reload();
             }
         }
@@ -1302,6 +1303,16 @@
         let midBossTriggeredWaves = [];
         let pendingMidBossMulti = 1;
         let pendingMidBossReward = 0;
+
+        let baseEnergy = 100; let frameCount = 0; let selectedInvenIdx = -1;
+        let timeStopFrames = 0; let invincibleFrames = 0; let isHeroTargeting = false; let shakeFrames = 0;
+        let mouseX = 0; let mouseY = 0; let laneEffect = { laneId: -1, timer: 0 };
+        let currentWave = 0; let waveTimer = 0; let enemiesSpawned = 0; let showWaveWarning = 0;
+        let waveState = 'stage_intro'; let waveWaitTimer = 90; let bossSpawned = false;
+        let enemies = []; let projectiles = []; let floatingTexts = [];
+
+        const waveDurations = [2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 7000];
+        const waveQuotas = [20, 30, 40, 50, 60, 70, 85, 100, 120, 150];
 
         function toggleMidBossPrompt() {
             let prompt = document.getElementById('midBossPrompt');
@@ -1408,16 +1419,6 @@
             if (isSpeedUp) this.classList.add('active');
             else this.classList.remove('active');
         });
-
-        let baseEnergy = 100; let frameCount = 0; let selectedInvenIdx = -1;
-        let timeStopFrames = 0; let invincibleFrames = 0; let isHeroTargeting = false; let shakeFrames = 0;
-        let mouseX = 0; let mouseY = 0; let laneEffect = { laneId: -1, timer: 0 };
-        let currentWave = 0; let waveTimer = 0; let enemiesSpawned = 0; let showWaveWarning = 0;
-        let waveState = 'stage_intro'; let waveWaitTimer = 90; let bossSpawned = false;
-        let enemies = []; let projectiles = []; let floatingTexts = [];
-
-        const waveDurations = [2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 7000];
-        const waveQuotas = [20, 30, 40, 50, 60, 70, 85, 100, 120, 150];
 
         function startBattle(stageNum) {
             currentStage = stageNum;
@@ -1547,10 +1548,10 @@
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                        <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                        ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                        ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                    </div></div>`;
+                                            <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
+                                            ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                            ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
+                                        </div></div>`;
                 });
                 html += `</div></div>`; treeCon.innerHTML += html;
             });
@@ -1558,14 +1559,14 @@
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
             heroContainer.innerHTML = `
-                    <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                    <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                        <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                        <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                    </div>
-                    <div class="hero-desc-box">${activeH.desc}</div>
-                    <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                `;
+                        <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
+                        <div class="hero-live2d-box" style="border-color:${activeH.color};">
+                            <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
+                            <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
+                        </div>
+                        <div class="hero-desc-box">${activeH.desc}</div>
+                        <div class="hero-upgrades" id="popupHeroUpgrades"></div>
+                    `;
 
             let upgsHtml = "";
             let upgTypes = [
@@ -1579,14 +1580,14 @@
                 let isMax = clvl >= 10;
                 let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
                 upgsHtml += `
-                        <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                            <div class="hero-upg-circle">Lv.${clvl}</div>
-                            <div class="hero-upg-info">
-                                <div class="hero-upg-name">${u.name}</div>
-                                <div class="hero-upg-desc">${u.desc}</div>
-                            </div>
-                            <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                        </button>`;
+                            <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
+                                <div class="hero-upg-circle">Lv.${clvl}</div>
+                                <div class="hero-upg-info">
+                                    <div class="hero-upg-name">${u.name}</div>
+                                    <div class="hero-upg-desc">${u.desc}</div>
+                                </div>
+                                <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
+                            </button>`;
             });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
@@ -1700,7 +1701,7 @@
         function handleInteract(e) {
             if (e && e.target !== canvas) return;
             if (gameState === 'gameover') {
-                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 100 && mouseY <= H / 2 + 190) { showScreen('titleScreen'); }
+                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 90 && mouseY <= H / 2 + 180) { showScreen('titleScreen'); }
                 return;
             }
             if (gameState !== 'playing') return;
@@ -1767,6 +1768,13 @@
             gameState = 'paused';
             document.getElementById('victoryOverlay').style.display = 'flex';
             document.getElementById('victoryTitle').innerText = `🏆 관문 ${currentStage} 돌파 성공! 🏆`;
+
+            // 명확한 텍스트로 보상 고지
+            let bonusMeta = Math.floor(battleCoins * 0.1);
+            metaCoins += bonusMeta;
+            updateUI(); // UI 업데이트 적용
+
+            document.getElementById('victoryRewardText').innerHTML = `남은 전투 코인 <span style="color:white;">${battleCoins}</span>의 10%가 전환되어<br><span style="color:#00d2d3;">천기 영석 ${bonusMeta}개</span>를 획득하였소!`;
         }
 
         function goToNextStage() { document.getElementById('victoryOverlay').style.display = 'none'; startBattle(currentStage); }
@@ -1797,6 +1805,7 @@
 
                     if (baseEnergy <= 0 && gameState !== 'gameover') {
                         gameState = 'gameover';
+
                         let bonusMeta = Math.floor(battleCoins * 0.1);
                         metaCoins += bonusMeta;
                         saveGame();
@@ -2073,9 +2082,11 @@
                             }
                         } else if (waveState === 'stage_cleared') {
                             waveWaitTimer--;
+
                             if (waveWaitTimer <= 0) {
                                 if (currentStage === currentMaxStage) currentMaxStage++;
-                                saveGame(); showVictoryPopup();
+                                showVictoryPopup();
+                                saveGame();
                             }
                         }
 
@@ -2198,7 +2209,7 @@
 
                                 if (enemiesInRange.length > 0) {
                                     if (s.char.projType === 'beam' || s.char.projType === 'straight') {
-                                        enemiesInRange.sort((a, b) => a.x - b.x); // 북해빙궁주, 당문암기 등 최전방 타겟팅 적용
+                                        enemiesInRange.sort((a, b) => a.x - b.x);
                                     } else {
                                         enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); });
                                     }
@@ -2227,12 +2238,10 @@
                                                     let vx = (predictedX - s.x) / T; let vy = (distY - 0.5 * g * T * T) / T;
                                                     projectiles.push({ type: 'parabola', x: s.x, y: s.y - 30, vx: vx, vy: vy, g: g, targetY: target.y - 20, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: target.lane.id });
                                                 } else {
-                                                    // beam or straight
                                                     projectiles.push({ type: s.char.projType, startX: s.x, startY: s.y - 30, tx: targetX, ty: targetY, progress: 0, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: s.laneId, shootDir: shootDir });
                                                 }
                                             }
 
-                                            // 북해빙궁주(빔) 포함 아군 오폭 판정
                                             if (['straight', 'pierce', 'beam'].includes(s.char.projType) && s.char.id !== 999 && s.char.id < 100) {
                                                 let alliesInLine = fieldSlots.filter(fs => fs.char && fs.char !== s.char && fs.laneId === s.laneId && ((shootDir === 1 && fs.x > s.x && fs.x < targetX) || (shootDir === -1 && fs.x < s.x && fs.x > targetX)));
                                                 alliesInLine.forEach(fs => {
@@ -2405,12 +2414,19 @@
                     else if (gameState === 'gameover') {
                         ctx.fillStyle = "#000000";
                         ctx.fillRect(0, 0, W, H);
-                        drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 80, 70, "#ff4757");
-                        drawText("危", W / 2, H / 2 - 250, 150, "rgba(255, 71, 87, 0.8)");
-                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 100, 360, 90);
-                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 100, 360, 90);
-                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 145, 40, "white");
+                        drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
+                        drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
+
+                        // 명확한 텍스트로 보상 고지
+                        let bonusMeta = Math.floor(battleCoins * 0.1);
+                        drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
+                        drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
+
+                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
                     }
+
                     ctx.restore();
                 }
             }

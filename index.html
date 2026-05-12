@@ -1815,24 +1815,18 @@
             }
         }
 
+        // [비급] 좌측 밀착 상태에서도 1:1로 대응되는 터치 좌표 역산 함수
         function updateMousePos(clientX, clientY) {
-            const isPortrait = window.matchMedia("(orientation: portrait)").matches || window.innerHeight > window.innerWidth;
+            const container = document.getElementById('gameContainer');
+            const rect = container.getBoundingClientRect(); // 컨테이너의 실제 화면상 위치/크기
 
-            if (isPortrait) {
-                // 세로 모드: 90도 회전 및 개별 스케일링된 상태 역산
-                let scaleX = window.innerHeight / 1920;
-                let scaleY = window.innerWidth / 1080;
+            // 현재 적용된 scale 배율을 역산하기 위해 rect의 너비를 기준값(1920)으로 나눔
+            const currentScale = rect.width / 1920;
 
-                mouseX = clientY / scaleX;
-                mouseY = (window.innerWidth - clientX) / scaleY;
-            } else {
-                // 가로 모드
-                let scaleX = window.innerWidth / 1920;
-                let scaleY = window.innerHeight / 1080;
-
-                mouseX = clientX / scaleX;
-                mouseY = clientY / scaleY;
-            }
+            // 터치한 절대 좌표(clientX)에서 컨테이너의 시작점(rect.left)을 뺀 후 배율로 나눔
+            // 이제 컨테이너가 왼쪽 끝에 붙어 있든, 살짝 떨어져 있든 무조건 내부 0~1920 좌표로 변환됨
+            mouseX = (clientX - rect.left) / currentScale;
+            mouseY = (clientY - rect.top) / currentScale;
         }
 
         function handleInteract(e) {

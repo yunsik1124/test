@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V12.3 - 텍스트 보상 인지 강화</title>
+    <title>강철의 난: 무림수호맹 V12.4 - 강제 가로모드 좌표계 완벽 보정</title>
     <style>
         /* === 기본 인게임 스타일 === */
         body {
@@ -31,6 +31,24 @@
             position: relative;
         }
 
+        /* === 강제 가로모드 === */
+        @media screen and (orientation: portrait) {
+            body {
+                width: 100vw;
+                height: 100vh;
+            }
+
+            #gameContainer {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 100vh;
+                height: 100vw;
+                transform: translate(-50%, -50%) rotate(90deg);
+                transform-origin: center center;
+            }
+        }
+
         canvas {
             background-color: #e8e6d9;
             max-width: 100%;
@@ -40,12 +58,15 @@
             cursor: pointer;
         }
 
+        /* === UI 레이어 (가상 1920x1080 컨테이너로 강제 후 JS로 스케일링) === */
         #uiLayer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            width: 1920px;
+            height: 1080px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            transform-origin: center center;
             pointer-events: none;
             display: flex;
             justify-content: center;
@@ -208,7 +229,9 @@
 
         #upgradePopup {
             display: none;
-            position: relative;
+            position: absolute;
+            inset: 0;
+            margin: auto;
             pointer-events: auto;
             width: 96%;
             height: 96%;
@@ -223,7 +246,6 @@
             box-sizing: border-box;
             box-shadow: 0 0 50px rgba(0,0,0,0.95);
             z-index: 100;
-            margin: auto;
         }
 
         .popup-header {
@@ -592,16 +614,15 @@
             font-size: 15px;
         }
 
-        /* === 스크린 분리 (가로모드 Full HD 대응) === */
+        /* === 스크린 분리 (1920x1080 강제 고정 후 JS 스케일링 적용) === */
         .screen {
             position: absolute;
-            inset: 0;
-            margin: auto;
-            width: 100%;
-            height: 100%;
-            max-width: 1920px;
-            max-height: 1080px;
-            aspect-ratio: 16 / 9;
+            width: 1920px;
+            height: 1080px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            transform-origin: center center;
             background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
             z-index: 1000;
             display: flex;
@@ -616,7 +637,7 @@
         }
 
         #titleScreen h1 {
-            font-size: 120px; /* FHD 스케일업 */
+            font-size: 120px;
             color: #f1c40f;
             text-shadow: 0 0 40px rgba(241,196,15,0.8);
             margin-bottom: 70px;
@@ -626,8 +647,8 @@
             background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
             color: white;
             border: 3px solid #ff7979;
-            padding: 25px 100px; /* FHD 스케일업 */
-            font-size: 48px; /* FHD 스케일업 */
+            padding: 25px 100px;
+            font-size: 48px;
             font-weight: bold;
             border-radius: 16px;
             cursor: pointer;
@@ -643,7 +664,7 @@
         .hero-carousel {
             display: flex;
             align-items: center;
-            gap: 80px; /* 간격 확대 */
+            gap: 80px;
             margin-bottom: 50px;
         }
 
@@ -651,7 +672,7 @@
             background: none;
             border: none;
             color: #fff;
-            font-size: 120px; /* 아이콘 확대 */
+            font-size: 120px;
             cursor: pointer;
             transition: 0.2s;
             opacity: 0.6;
@@ -665,8 +686,8 @@
             }
 
         .hero-showcase {
-            width: 500px; /* 기존 600px에서 축소 */
-            height: 650px; /* 기존 750px에서 축소하여 상단 여유 확보 */
+            width: 500px;
+            height: 650px;
             background: rgba(0,0,0,0.5);
             border: 5px solid #f1c40f;
             box-shadow: 0 0 40px rgba(241,196,15,0.3);
@@ -676,11 +697,10 @@
             align-items: center;
             position: relative;
             border-radius: 20px;
-            cursor: pointer; /* 클릭 가능한 요소임을 명시 */
+            cursor: pointer;
             transition: all 0.2s ease-in-out;
         }
 
-            /* 버튼 역할을 하므로 마우스를 올렸을 때 강조 효과 추가 */
             .hero-showcase:hover {
                 transform: translateY(-5px) scale(1.02);
                 box-shadow: 0 15px 50px rgba(241,196,15,0.6);
@@ -688,7 +708,7 @@
             }
 
         #heroNameDisplay {
-            font-size: 48px; /* 기존 56px에서 축소 */
+            font-size: 48px;
             font-weight: bold;
             margin-bottom: 15px;
             z-index: 2;
@@ -696,7 +716,7 @@
         }
 
         #heroDescDisplay {
-            font-size: 22px; /* 기존 26px에서 축소 */
+            font-size: 22px;
             color: #bdc3c7;
             margin-bottom: 20px;
             text-align: center;
@@ -707,7 +727,7 @@
         }
 
         #mapArea {
-            width: 1500px; /* FHD 기준 지도 영역 확대 */
+            width: 1500px;
             height: 850px;
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect width="100%" height="100%" fill="%23222"/><path d="M250,250 Q500,60 750,250 T1250,375 L1375,750 L125,750 Z" fill="%23333" stroke="%23555" stroke-width="6"/></svg>') no-repeat center;
             background-size: cover;
@@ -719,8 +739,8 @@
 
         .map-node {
             position: absolute;
-            width: 60px; /* FHD 스케일업 */
-            height: 60px; /* FHD 스케일업 */
+            width: 60px;
+            height: 60px;
             background: #e74c3c;
             border: 4px solid #fff;
             border-radius: 50%;
@@ -747,15 +767,15 @@
             position: absolute;
             top: -45px;
             white-space: nowrap;
-            font-size: 28px; /* FHD 스케일업 */
+            font-size: 28px;
             font-weight: bold;
             color: #fff;
             text-shadow: 2px 2px 6px #000;
         }
 
         #stageContainer {
-            width: 1100px; /* FHD 스케일업 */
-            height: 800px; /* FHD 스케일업 */
+            width: 1100px;
+            height: 800px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -769,13 +789,13 @@
 
         .stage-node {
             width: 85%;
-            padding: 30px; /* 패딩 확대 */
+            padding: 30px;
             background: linear-gradient(90deg, #2c3e50 0%, #34495e 100%);
             border: 3px solid #7f8c8d;
             border-radius: 12px;
             text-align: center;
             cursor: pointer;
-            font-size: 36px; /* FHD 스케일업 */
+            font-size: 36px;
             font-weight: bold;
             transition: 0.2s;
             flex-shrink: 0;
@@ -796,9 +816,9 @@
 
         .top-bar {
             position: absolute;
-            top: 40px; /* FHD 기준 위치 조정 */
-            left: 60px; /* FHD 기준 위치 조정 */
-            font-size: 40px; /* FHD 스케일업 */
+            top: 40px;
+            left: 60px;
+            font-size: 40px;
             font-weight: bold;
             cursor: pointer;
             color: #bdc3c7;
@@ -810,7 +830,7 @@
                 color: #fff;
             }
 
-        /* === 용병모집 및 버프 가로 배치 UI === */
+        /* 용병모집 및 버프 UI */
         .top-ui-wrapper {
             position: absolute;
             left: 20px;
@@ -940,7 +960,6 @@
             white-space: nowrap;
         }
 
-        /* 누적 버프 리스트 UI */
         #buffListUI {
             display: flex;
             flex-wrap: wrap;
@@ -971,7 +990,6 @@
             padding: 0;
         }
 
-        /* 관문 돌파 오버레이 */
         #victoryOverlay {
             position: absolute;
             top: 0;
@@ -999,7 +1017,6 @@
             gap: 30px;
         }
 
-        /* 웨이브 패스 버튼 */
         #wavePassBtn {
             position: absolute;
             left: 20px;
@@ -1040,7 +1057,6 @@
                     transform: scale(1.05);
                 }
 
-        /* X2 배속 버튼 UI 추가 */
         #speedUpBtn {
             position: absolute;
             left: 20px;
@@ -1193,6 +1209,21 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const W = 1920; const H = 1080;
+
+        /* === JS 반응형 화면 스케일링 핵심 초식 === */
+        function adjustUIScale() {
+            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            if (isPortrait) { w = window.innerHeight; h = window.innerWidth; }
+            let scale = Math.min(w / 1920, h / 1080);
+            document.querySelectorAll('#uiLayer, .screen').forEach(el => {
+                el.style.transform = `translate(-50%, -50%) scale(${scale})`;
+            });
+        }
+        window.addEventListener('resize', adjustUIScale);
+        window.addEventListener('orientationchange', () => setTimeout(adjustUIScale, 100));
+        adjustUIScale();
 
         let battleCoins = 500;
         let metaCoins = 0;
@@ -1484,7 +1515,7 @@
             updateUI();
             showScreen('');
             document.getElementById('gameCanvas').style.display = 'block';
-            document.getElementById('uiLayer').style.display = 'block';
+            document.getElementById('uiLayer').style.display = 'flex';
         }
 
         function updateUI() {
@@ -1573,10 +1604,10 @@
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                        <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                        ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                        ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                    </div></div>`;
+                                            <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
+                                            ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                            ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
+                                        </div></div>`;
                 });
                 html += `</div></div>`; treeCon.innerHTML += html;
             });
@@ -1584,14 +1615,14 @@
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
             heroContainer.innerHTML = `
-                    <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                    <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                        <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                        <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                    </div>
-                    <div class="hero-desc-box">${activeH.desc}</div>
-                    <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                `;
+                        <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
+                        <div class="hero-live2d-box" style="border-color:${activeH.color};">
+                            <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
+                            <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
+                        </div>
+                        <div class="hero-desc-box">${activeH.desc}</div>
+                        <div class="hero-upgrades" id="popupHeroUpgrades"></div>
+                    `;
 
             let upgsHtml = "";
             let upgTypes = [
@@ -1605,14 +1636,14 @@
                 let isMax = clvl >= 10;
                 let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
                 upgsHtml += `
-                        <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                            <div class="hero-upg-circle">Lv.${clvl}</div>
-                            <div class="hero-upg-info">
-                                <div class="hero-upg-name">${u.name}</div>
-                                <div class="hero-upg-desc">${u.desc}</div>
-                            </div>
-                            <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                        </button>`;
+                            <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
+                                <div class="hero-upg-circle">Lv.${clvl}</div>
+                                <div class="hero-upg-info">
+                                    <div class="hero-upg-name">${u.name}</div>
+                                    <div class="hero-upg-desc">${u.desc}</div>
+                                </div>
+                                <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
+                            </button>`;
             });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
@@ -1717,10 +1748,19 @@
             }
         }
 
+        /* === 🚨 핵심 수정: 캔버스 터치 이벤트 완벽 좌표 보정 🚨 === */
         function updateMousePos(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
             const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-            if (isPortrait) { mouseX = clientY * (W / window.innerHeight); mouseY = (window.innerWidth - clientX) * (H / window.innerWidth); }
-            else { const rect = canvas.getBoundingClientRect(); mouseX = (clientX - rect.left) * (W / rect.width); mouseY = (clientY - rect.top) * (H / rect.height); }
+
+            // CSS aspect-ratio로 인한 레터박스(빈 여백)까지 완벽히 계산하여 논리 좌표로 치환
+            if (isPortrait) {
+                mouseX = ((clientY - rect.top) / rect.height) * W;
+                mouseY = ((rect.right - clientX) / rect.width) * H;
+            } else {
+                mouseX = ((clientX - rect.left) / rect.width) * W;
+                mouseY = ((clientY - rect.top) / rect.height) * H;
+            }
         }
 
         function handleInteract(e) {
@@ -1760,7 +1800,6 @@
                 const s = fieldSlots[i];
                 if (Math.hypot(mouseX - s.x, mouseY - s.y) < 60) {
                     if (s.char) {
-                        if (s.char.id === 999) return;
                         s.char.state = 'waiting'; s.char.timer = 125; s.char.showRangeTimer = 0; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.pendingStrike = null; s.char = null; selectedInvenIdx = -1;
                     } else if (selectedInvenIdx !== -1) {
                         if (s.zone === 'unbuildable') { createFloatingText(s.x, s.y, "배치 불가 지역!", "#e74c3c", false); selectedInvenIdx = -1; return; }
@@ -1794,15 +1833,13 @@
             document.getElementById('victoryOverlay').style.display = 'flex';
             document.getElementById('victoryTitle').innerText = `🏆 제 ${currentStage} 관문 돌파 성공! 🏆`;
 
-            // [기획 변경 적용] 승리 보상 계산: 난이도별 고정 보상 + 잔여 코인의 20%
-            let stageFixedReward = currentStage * 300; // 관문(스테이지) 난이도 비례 고정 보상 (필요시 수치 조절)
-            let coinBonusMeta = Math.floor(battleCoins * 0.20); // 잔여 전투 코인의 20% 보너스
-            let totalReward = stageFixedReward + coinBonusMeta; // 최종 획득 영석 합산
+            let stageFixedReward = currentStage * 300;
+            let coinBonusMeta = Math.floor(battleCoins * 0.20);
+            let totalReward = stageFixedReward + coinBonusMeta;
 
             metaCoins += totalReward;
-            updateUI(); // UI 업데이트 적용
+            updateUI();
 
-            // 유저 인지 강화를 위해 획득 내역을 명확히 분리하여 렌더링
             document.getElementById('victoryRewardText').innerHTML =
                 `관문 돌파 기본 보상: <span style="color:#00d2d3;">${stageFixedReward} 💎</span><br>` +
                 `잔여 전투 코인(<span style="color:white;">${battleCoins}</span>)의 20% 보너스: <span style="color:#00d2d3;">${coinBonusMeta} 💎</span><br>` +
@@ -1813,7 +1850,7 @@
         function goToLobby() { document.getElementById('victoryOverlay').style.display = 'none'; showScreen('heroSelectScreen'); }
 
         function applyLifesteal(char, dmg) {
-            if (!char || char.id === 999 || char.hp <= 0) return;
+            if (!char || char.hp <= 0) return;
             let lsRate = getBase('lifesteal', 0);
             if (lsRate > 0) {
                 let healAmt = dmg * lsRate;
@@ -1843,7 +1880,6 @@
                         saveGame();
                         togglePopup(false);
 
-                        // UI 하이드 처리
                         document.querySelector('.top-ui-wrapper').style.display = 'none';
                         document.querySelector('.hud-panel').style.display = 'none';
                         document.getElementById('wavePassBtn').style.display = 'none';
@@ -1937,7 +1973,7 @@
                                 ctx.fillStyle = "rgba(46, 204, 113, 0.25)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 45, 25, 0, 0, Math.PI * 2); ctx.fill();
                                 drawText("영기(버프)", s.x, s.y - 5, 16, "rgba(46, 204, 113, 0.8)");
                                 if (s.char && frameCount % 60 === 0) {
-                                    let mh = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp);
+                                    let mh = getBase('hp', s.char.maxHp);
                                     if (s.char.hp < mh) { s.char.hp = Math.min(mh, s.char.hp + 20); createFloatingText(s.x, s.y - 30, "+20", "#2ecc71", false); }
                                 }
                             }
@@ -1962,7 +1998,7 @@
                             }
 
                             if (s.char) {
-                                if (s.char.id !== 999 && timeStopFrames <= 0 && frameCount % 25 === 0) { let regenAmount = getBase('regenHP', 0); let maxH = getBase('hp', s.char.maxHp); if (regenAmount > 0 && s.char.hp < maxH) { s.char.hp = Math.min(maxH, s.char.hp + regenAmount); createFloatingText(s.x, s.y - 40, `+${Math.floor(regenAmount)}`, "#2ecc71", false); } }
+                                if (timeStopFrames <= 0 && frameCount % 25 === 0) { let regenAmount = getBase('regenHP', 0); let maxH = getBase('hp', s.char.maxHp); if (regenAmount > 0 && s.char.hp < maxH) { s.char.hp = Math.min(maxH, s.char.hp + regenAmount); createFloatingText(s.x, s.y - 40, `+${Math.floor(regenAmount)}`, "#2ecc71", false); } }
                                 let cw = 55; let ch = 90; let renderOffsetX = 0; let renderOffsetY = 0; let renderRotate = 0; let scaleX = 1; let scaleY = 1;
 
                                 if (s.char.strikeAnim > 0) { let progress = Math.sin((1 - s.char.strikeAnim / 6) * Math.PI); renderOffsetX = progress * s.char.lungeDist * (s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1); renderOffsetY = progress * s.char.lungeDist * (s.char.strikeDirY || 0); renderRotate = progress * 0.05 * ((s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1) > 0 ? 1 : -1); s.char.strikeAnim--; }
@@ -1978,9 +2014,9 @@
                                 }
 
                                 ctx.save(); ctx.translate(s.x + renderOffsetX, s.y + renderOffsetY); ctx.rotate(renderRotate); ctx.scale(scaleX, scaleY);
-                                if (invincibleFrames > 0 || s.char.id === 999) { ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.strokeRect(- (cw / 2) - 5, -ch + 5, cw + 10, ch + 10); }
+                                if (invincibleFrames > 0) { ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.strokeRect(- (cw / 2) - 5, -ch + 5, cw + 10, ch + 10); }
                                 ctx.fillStyle = s.char.color; ctx.fillRect(-(cw / 2), -ch + 10, cw, ch); drawText(s.char.name, 0, -ch - 5, 18, "#fff");
-                                let curMaxHp = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp); ctx.fillStyle = "lime"; ctx.fillRect(-(cw / 2), 15, cw * (s.char.hp / curMaxHp), 6); ctx.restore();
+                                let curMaxHp = getBase('hp', s.char.maxHp); ctx.fillStyle = "lime"; ctx.fillRect(-(cw / 2), 15, cw * (s.char.hp / curMaxHp), 6); ctx.restore();
 
                                 if (s.char.showRangeTimer > 0) {
                                     let fillColor = s.char.attackType === 'heal' ? "rgba(46, 204, 113, 0.15)" : "rgba(231, 76, 60, 0.15)"; ctx.fillStyle = fillColor;
@@ -2118,7 +2154,7 @@
                             if (waveWaitTimer <= 0) {
                                 if (currentStage === currentMaxStage) currentMaxStage++;
                                 showVictoryPopup();
-                                saveGame(); 
+                                saveGame();
                             }
                         }
 
@@ -2157,12 +2193,12 @@
                                         overlapSlots.sort((a, b) => b.x - a.x); let overlapSlot = overlapSlots[0];
                                         if (e.meleeCd <= 0) {
                                             let fDamage = Math.max(1, e.damage - getBase('def', 0));
-                                            if (invincibleFrames > 0 || overlapSlot.char.id === 999) fDamage = 0;
+                                            if (invincibleFrames > 0) fDamage = 0;
                                             overlapSlot.char.hp -= fDamage;
                                             ctx.fillStyle = "rgba(200, 0, 0, 0.5)"; ctx.beginPath(); ctx.arc(overlapSlot.x, overlapSlot.y - 20, 30, 0, Math.PI * 2); ctx.fill();
                                             if (invincibleFrames > 0) createFloatingText(overlapSlot.x, overlapSlot.y - 40, "무적!", "gold", false);
                                             if (overlapSlot.char.hp <= 0 && invincibleFrames <= 0) {
-                                                if (overlapSlot.char.id === 999 || overlapSlot.char.id > 100) { overlapSlot.char = null; } else { overlapSlot.char.state = 'dead'; overlapSlot.char.timer = getBase('respawnReduc', 250); overlapSlot.char.hp = getBase('hp', overlapSlot.char.maxHp); overlapSlot.char = null; }
+                                                if (overlapSlot.char.id > 100) { overlapSlot.char = null; } else { overlapSlot.char.state = 'dead'; overlapSlot.char.timer = getBase('respawnReduc', 250); overlapSlot.char.hp = getBase('hp', overlapSlot.char.maxHp); overlapSlot.char = null; }
                                             }
                                             e.meleeCd = 25;
                                         } else { e.meleeCd--; }
@@ -2170,7 +2206,7 @@
                                 } else if (e.type === 'boss') {
                                     if (e.cd <= 0) { let targets = fieldSlots.filter(fs => fs.char); if (targets.length > 0) { let t = targets[Math.floor(Math.random() * targets.length)]; projectiles.push({ type: 'enemyProj', startX: e.x, startY: e.y - 50, tx: t.x, ty: t.y - 20, progress: 0, color: '#c0392b', damage: e.damage + 10 }); } e.cd = 62; } else { e.cd--; }
                                     if (frameCount % 125 === 0) { const lane = lanes[Math.floor(Math.random() * lanes.length)]; enemies.push({ type: 'normal', x: e.x + 50, y: lane.y, lane: lane, hp: Math.floor(100 * stageMulti), maxHp: Math.floor(100 * stageMulti), slowTimer: 0, speed: 0.84, damage: Math.floor(5 * stageMulti), color: '#e67e22', range: 55, isRanged: false, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: 14 }); }
-                                    fieldSlots.forEach(s => { if (s.char && s.laneId === e.lane.id && Math.abs(e.x - s.x) < 100) { if (invincibleFrames <= 0 && s.char.id !== 999) s.char.hp -= 2; if (s.char.hp <= 0 && invincibleFrames <= 0) { if (s.char.id === 999 || s.char.id > 100) { s.char = null; } else { s.char.state = 'dead'; s.char.timer = getBase('respawnReduc', 250); s.char.hp = getBase('hp', s.char.maxHp); s.char = null; } } } });
+                                    fieldSlots.forEach(s => { if (s.char && s.laneId === e.lane.id && Math.abs(e.x - s.x) < 100) { if (invincibleFrames <= 0) s.char.hp -= 2; if (s.char.hp <= 0 && invincibleFrames <= 0) { if (s.char.id > 100) { s.char = null; } else { s.char.state = 'dead'; s.char.timer = getBase('respawnReduc', 250); s.char.hp = getBase('hp', s.char.maxHp); s.char = null; } } } });
                                 }
                             }
 
@@ -2214,7 +2250,7 @@
 
                         fieldSlots.forEach(s => {
                             if (s.char) {
-                                let cdReduce = (s.char.id === 999 || s.char.id > 100) ? 0 : getBase('atkSpeed', 0);
+                                let cdReduce = (s.char.id > 100) ? 0 : getBase('atkSpeed', 0);
                                 let actualMaxCd = Math.max(3, Math.floor(s.char.maxCd * (1 - cdReduce)));
                                 if (h0BuffTimer > 0) actualMaxCd = Math.max(2, Math.floor(actualMaxCd / 2));
 
@@ -2241,14 +2277,14 @@
 
                                 if (enemiesInRange.length > 0) {
                                     if (s.char.projType === 'beam' || s.char.projType === 'straight') {
-                                        enemiesInRange.sort((a, b) => a.x - b.x); 
+                                        enemiesInRange.sort((a, b) => a.x - b.x);
                                     } else {
                                         enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); });
                                     }
 
                                     let target = enemiesInRange[0];
                                     let dmgStat = s.char.attackType === 'melee' ? 'atkMelee' : 'atkRanged';
-                                    let finalBaseDmg = (s.char.id === 999 || s.char.id > 100) ? s.char.damage : getBase(dmgStat, s.char.damage);
+                                    let finalBaseDmg = (s.char.id > 100) ? s.char.damage : getBase(dmgStat, s.char.damage);
                                     let shootDir = target.x > s.x ? 1 : -1;
 
                                     if (s.char.attackType === 'ranged') {
@@ -2274,7 +2310,7 @@
                                                 }
                                             }
 
-                                            if (['straight', 'pierce', 'beam'].includes(s.char.projType) && s.char.id !== 999 && s.char.id < 100) {
+                                            if (['straight', 'pierce', 'beam'].includes(s.char.projType) && s.char.id < 100) {
                                                 let alliesInLine = fieldSlots.filter(fs => fs.char && fs.char !== s.char && fs.laneId === s.laneId && ((shootDir === 1 && fs.x > s.x && fs.x < targetX) || (shootDir === -1 && fs.x < s.x && fs.x > targetX)));
                                                 alliesInLine.forEach(fs => {
                                                     let friendlyDmg = Math.max(1, Math.floor(finalBaseDmg * 0.2));
@@ -2282,7 +2318,7 @@
                                                     fs.char.hp -= friendlyDmg;
                                                     createFloatingText(fs.x, fs.y - 45, `-${friendlyDmg}`, "#ff0000", false);
                                                     if (fs.char.hp <= 0 && invincibleFrames <= 0) {
-                                                        if (fs.char.id === 999 || fs.char.id > 100) { fs.char = null; }
+                                                        if (fs.char.id > 100) { fs.char = null; }
                                                         else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; }
                                                     }
                                                 });
@@ -2326,7 +2362,7 @@
                                     fieldSlots.forEach(fs => {
                                         if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) {
                                             let dmg = p.damage;
-                                            if (invincibleFrames > 0 || fs.char.id === 999) dmg = 0;
+                                            if (invincibleFrames > 0) dmg = 0;
                                             fs.char.hp -= dmg;
                                             createFloatingText(fs.x, fs.y - 30, `-${dmg}`, "#e74c3c", true);
                                             if (fs.char.hp <= 0 && invincibleFrames <= 0) {
@@ -2362,7 +2398,7 @@
 
                             if (isHit && p.type !== 'midbossProj') {
                                 if (p.type === 'heal_parabola') { if (p.target.state === 'deployed') { p.target.hp = Math.min(getBase('hp', p.target.maxHp), p.target.hp + p.heal); createFloatingText(p.tx, p.ty - 20, `+${Math.floor(p.heal)}`, "#2ecc71", true); } }
-                                else if (p.type === 'enemyProj') { let hitSlots = fieldSlots.filter(fs => fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < 60); if (hitSlots.length > 0) { hitSlots.sort((a, b) => b.x - a.x); let hitSlot = hitSlots[0]; let fHit = Math.max(1, p.damage - getBase('def', 0)); if (invincibleFrames > 0 || hitSlot.char.id === 999) fHit = 0; hitSlot.char.hp -= fHit; createFloatingText(hitSlot.x, hitSlot.y - 30, `-${fHit}`, "#e74c3c", true); if (invincibleFrames > 0) createFloatingText(hitSlot.x, hitSlot.y - 40, "무적!", "gold", false); if (hitSlot.char.hp <= 0 && invincibleFrames <= 0) { if (hitSlot.char.id === 999 || hitSlot.char.id > 100) { hitSlot.char = null; } else { hitSlot.char.state = 'dead'; hitSlot.char.timer = getBase('respawnReduc', 250); hitSlot.char.hp = getBase('hp', hitSlot.char.maxHp); hitSlot.char = null; } } } }
+                                else if (p.type === 'enemyProj') { let hitSlots = fieldSlots.filter(fs => fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < 60); if (hitSlots.length > 0) { hitSlots.sort((a, b) => b.x - a.x); let hitSlot = hitSlots[0]; let fHit = Math.max(1, p.damage - getBase('def', 0)); if (invincibleFrames > 0) fHit = 0; hitSlot.char.hp -= fHit; createFloatingText(hitSlot.x, hitSlot.y - 30, `-${fHit}`, "#e74c3c", true); if (invincibleFrames > 0) createFloatingText(hitSlot.x, hitSlot.y - 40, "무적!", "gold", false); if (hitSlot.char.hp <= 0 && invincibleFrames <= 0) { if (hitSlot.char.id > 100) { hitSlot.char = null; } else { hitSlot.char.state = 'dead'; hitSlot.char.timer = getBase('respawnReduc', 250); hitSlot.char.hp = getBase('hp', hitSlot.char.maxHp); hitSlot.char = null; } } } }
                                 else if (p.type !== 'pierce') {
                                     if (p.isMiss) { ctx.fillStyle = "rgba(100, 100, 100, 0.5)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, 40, 0, Math.PI * 2); ctx.fill(); createFloatingText(p.tx, p.ty, "Miss", "#aaa", false); }
                                     else {
@@ -2370,97 +2406,96 @@
                                         if (p.char.aoe) {
                                             let explosionRadius = p.char.aoeRadius || 180;
                                             enemies.forEach(e => { if (Math.hypot(e.x - p.tx, e.y - p.ty) < explosionRadius) { e.hp -= finalDmg; e.hitAnim = 6; applyLifesteal(p.char, finalDmg); if (p.char.poison) e.poisoned = true; createFloatingText(e.x, e.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); } });
-                                            if (p.char.friendlyFire) { fieldSlots.forEach(fs => { if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) { let friendlyDmg = Math.floor(finalDmg * 0.2); if (invincibleFrames > 0 || fs.char.id === 999) friendlyDmg = 0; fs.char.hp -= friendlyDmg; createFloatingText(fs.x, fs.y - 50, `-${friendlyDmg}`, "#ff0000", false); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id === 999 || fs.char.id > 100) { fs.char = null; } else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } } }); } ctx.fillStyle = "rgba(231, 76, 60, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill();
+                                            if (p.char.friendlyFire) { fieldSlots.forEach(fs => { if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) { let friendlyDmg = Math.floor(finalDmg * 0.2); if (invincibleFrames > 0) friendlyDmg = 0; fs.char.hp -= friendlyDmg; createFloatingText(fs.x, fs.y - 50, `-${friendlyDmg}`, "#ff0000", false); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id > 100) { fs.char = null; } else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } } }); } ctx.fillStyle = "rgba(231, 76, 60, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill();
                                         } else { let hitEnemy = null; let enemiesInLane = enemies.filter(e => e.lane.id === p.laneId); if (enemiesInLane.length > 0) { enemiesInLane.sort((a, b) => Math.abs(a.x - p.tx) - Math.abs(b.x - p.tx)); hitEnemy = enemiesInLane[0]; } if (hitEnemy) { hitEnemy.hp -= finalDmg; hitEnemy.hitAnim = 6; applyLifesteal(p.char, finalDmg); if (p.char.poison) hitEnemy.poisoned = true; if (p.char.slow && hitEnemy.type !== 'boss' && hitEnemy.type !== 'midboss') hitEnemy.slowTimer = 75; createFloatingText(hitEnemy.x, hitEnemy.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); } }
                                     }
                                 }
-                                projectiles.splice(i, 1);
-                            } else if (isHit && p.type === 'midbossProj') {
-                                projectiles.splice(i, 1);
                             }
+                            projectiles.splice(i, 1);
+                        } else if (isHit && p.type === 'midbossProj') {
+                            projectiles.splice(i, 1);
+                        }
+                    }
+
+                    for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+
+                    // UI 렌더링
+                    ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 930, W, 150); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 930, W, 150);
+
+                    ctx.fillStyle = "rgba(0,0,0,0.8)";
+                    ctx.fillRect(20, 940, 280, 130);
+                    ctx.strokeStyle = "#f1c40f";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(20, 940, 280, 130);
+                    drawText(`[ 관문 ${currentStage}/10 ]`, 160, 965, 26, "#2ecc71");
+                    let remainSec = Math.ceil(waveTimer / 60);
+                    let waveStr = currentWave === 9 ? "웨이브 10/10 (보스전)" : `웨이브 ${currentWave + 1}/10 (${remainSec}초)`;
+                    drawText(waveStr, 160, 1005, 22, "#3498db");
+                    drawText(`에너지: ${baseEnergy}% 危`, 160, 1045, 24, "#ff4757");
+
+                    const slotWidth = 120;
+                    const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+
+                    deck.forEach((char, i) => {
+                        const bx = deckStartX + (i * slotWidth); const slotHeight = 120;
+                        ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333"; ctx.lineWidth = 4; ctx.strokeRect(bx, 945, slotWidth, slotHeight);
+                        let slotInnerW = slotWidth - 4; let slotInnerH = 80; let actualCost = getActualCost(char);
+                        if (char.state === 'deployed') {
+                            ctx.fillStyle = "#111"; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
+                            drawText("배치됨", bx + (slotWidth / 2), 987, 20, "#555");
+                        }
+                        else if (char.state === 'waiting' || char.state === 'dead') {
+                            char.timer--; if (char.timer <= 0) char.state = 'ready';
+                            ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
+                            let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
+                            let ratio = char.timer / maxT;
+                            ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH * ratio);
+                            drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), 987, 20, "#ff4757");
+                        }
+                        else {
+                            char.hp = getBase('hp', char.maxHp);
+                            ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
+                            ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + 2, 947, slotInnerW, 30);
+                            drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), 962, 16, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
                         }
 
-                        for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+                        drawText(char.name, bx + (slotWidth / 2), 1030, 18, (char.state === 'ready') ? "white" : "#7f8c8d");
+                        drawText(`[${char.role}]`, bx + (slotWidth / 2), 1050, 13, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
 
-                        // UI 렌더링
-                        ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 930, W, 150); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 930, W, 150);
+                        if (char.state === 'ready' && char.hp < getBase('hp', char.maxHp)) {
+                            ctx.fillStyle = "red"; ctx.fillRect(bx + 10, 1065, slotWidth - 20, 6);
+                            ctx.fillStyle = "lime"; ctx.fillRect(bx + 10, 1065, (slotWidth - 20) * (char.hp / getBase('hp', char.maxHp)), 6);
+                        }
+                    });
 
-                        ctx.fillStyle = "rgba(0,0,0,0.8)";
-                        ctx.fillRect(20, 940, 280, 130);
-                        ctx.strokeStyle = "#f1c40f";
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(20, 940, 280, 130);
-                        drawText(`[ 관문 ${currentStage}/10 ]`, 160, 965, 26, "#2ecc71");
-                        let remainSec = Math.ceil(waveTimer / 60);
-                        let waveStr = currentWave === 9 ? "웨이브 10/10 (보스전)" : `웨이브 ${currentWave + 1}/10 (${remainSec}초)`;
-                        drawText(waveStr, 160, 1005, 22, "#3498db");
-                        drawText(`에너지: ${baseEnergy}% 危`, 160, 1045, 24, "#ff4757");
+                    ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
+                    let activeHeroObj = heroes.find(h => h.id === equippedHero);
+                    ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 15, 90, 90); drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 35, 30, "white");
+                    if (heroSlot.cd > 0 || heroSlot.activeTimer > 0) { let ratio = heroSlot.activeTimer > 0 ? (heroSlot.activeTimer / heroSlot.maxActive) : (1 - heroSlot.cd / heroSlot.maxCd); ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 130, heroSlot.y + 85, 270 * ratio, 15); drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 265, heroSlot.y + 65, 22, "#aaa"); if (heroSlot.cd > 0 && heroSlot.activeTimer <= 0) heroSlot.cd--; }
+                    else { ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 130, heroSlot.y + 85, 270, 15); drawText("발동! (터치)", heroSlot.x + 265, heroSlot.y + 65, 26, "red"); }
 
-                        const slotWidth = 120;
-                        const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+                    if (heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H); drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color); heroSlot.activeTimer--; }
+                    if (invincibleFrames > 0) { drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold"); }
+                    if (showWaveWarning > 0) { let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1)); drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`); showWaveWarning--; }
 
-                        deck.forEach((char, i) => {
-                            const bx = deckStartX + (i * slotWidth); const slotHeight = 120;
-                            ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333"; ctx.lineWidth = 4; ctx.strokeRect(bx, 945, slotWidth, slotHeight);
-                            let slotInnerW = slotWidth - 4; let slotInnerH = 80; let actualCost = getActualCost(char);
-                            if (char.state === 'deployed') {
-                                ctx.fillStyle = "#111"; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
-                                drawText("배치됨", bx + (slotWidth / 2), 987, 20, "#555");
-                            }
-                            else if (char.state === 'waiting' || char.state === 'dead') {
-                                char.timer--; if (char.timer <= 0) char.state = 'ready';
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
-                                let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
-                                let ratio = char.timer / maxT;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH * ratio);
-                                drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), 987, 20, "#ff4757");
-                            }
-                            else {
-                                char.hp = getBase('hp', char.maxHp);
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 947, slotInnerW, slotInnerH);
-                                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + 2, 947, slotInnerW, 30);
-                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), 962, 16, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
-                            }
-
-                            drawText(char.name, bx + (slotWidth / 2), 1030, 18, (char.state === 'ready') ? "white" : "#7f8c8d");
-                            drawText(`[${char.role}]`, bx + (slotWidth / 2), 1050, 13, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
-
-                            if (char.state === 'ready' && char.hp < getBase('hp', char.maxHp)) {
-                                ctx.fillStyle = "red"; ctx.fillRect(bx + 10, 1065, slotWidth - 20, 6);
-                                ctx.fillStyle = "lime"; ctx.fillRect(bx + 10, 1065, (slotWidth - 20) * (char.hp / getBase('hp', char.maxHp)), 6);
-                            }
-                        });
-
-                        ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
-                        let activeHeroObj = heroes.find(h => h.id === equippedHero);
-                        ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 15, 90, 90); drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 35, 30, "white");
-                        if (heroSlot.cd > 0 || heroSlot.activeTimer > 0) { let ratio = heroSlot.activeTimer > 0 ? (heroSlot.activeTimer / heroSlot.maxActive) : (1 - heroSlot.cd / heroSlot.maxCd); ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 130, heroSlot.y + 85, 270 * ratio, 15); drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 265, heroSlot.y + 65, 22, "#aaa"); if (heroSlot.cd > 0 && heroSlot.activeTimer <= 0) heroSlot.cd--; }
-                        else { ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 130, heroSlot.y + 85, 270, 15); drawText("발동! (터치)", heroSlot.x + 265, heroSlot.y + 65, 26, "red"); }
-
-                        if (heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H); drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color); heroSlot.activeTimer--; }
-                        if (invincibleFrames > 0) { drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold"); }
-                        if (showWaveWarning > 0) { let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1)); drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`); showWaveWarning--; }
-
-                        if (timeStopFrames > 0) timeStopFrames--; if (invincibleFrames > 0) invincibleFrames--; frameCount++;
-                    }
-                    else if (gameState === 'gameover') {
-                        ctx.fillStyle = "#000000";
-                        ctx.fillRect(0, 0, W, H);
-                        drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
-                        drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
-
-                        // 명확한 텍스트로 보상 고지
-                        let bonusMeta = Math.floor(battleCoins * 0.1);
-                        drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
-                        drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
-
-                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
-                    }
-
-                    ctx.restore();
+                    if (timeStopFrames > 0) timeStopFrames--; if (invincibleFrames > 0) invincibleFrames--; frameCount++;
                 }
+                    else if (gameState === 'gameover') {
+                    ctx.fillStyle = "#000000";
+                    ctx.fillRect(0, 0, W, H);
+                    drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
+                    drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
+
+                    let bonusMeta = Math.floor(battleCoins * 0.1);
+                    drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
+                    drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
+
+                    ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                    drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
+                }
+
+                ctx.restore();
             }
         }
 

@@ -14,41 +14,43 @@
             animation: none !important; /* 반짝이는 애니메이션 중지 */
         }
         /* === 기본 인게임 스타일 === */
+        /* === 기본 인게임 스타일 === */
+        /* === 모바일 브라우저 바 대응 및 중앙 정렬 스타일 === */
         body {
             margin: 0;
-            background-color: #111;
+            padding: 0;
+            background-color: #000; /* 여백은 항상 검은색으로 처리하여 몰입감 유지 */
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             width: 100vw;
+            height: 100vh;
+            height: -webkit-fill-available; /* iOS 브라우저바 대응 */
             overflow: hidden;
-            font-family: 'Malgun Gothic', sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
 
         #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background-color: #000;
+            position: relative; /* absolute에서 relative로 변경하여 부모(body)의 flex 영향 가중 */
+            width: 1920px;
+            height: 1080px;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* 1920x1080 표준 규격 레이어 통합 및 정중앙 고정 */
+        /* 캔버스와 UI 레이어를 부모 박스에 가득 채움 */
         #gameCanvas, #uiLayer, .screen {
             position: absolute;
             width: 1920px;
             height: 1080px;
-            top: 50%;
-            left: 50%;
-            transform-origin: center center;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
+            transform-origin: top left; /* 기준점을 왼쪽 위로 고정하여 계산 단순화 */
         }
-
         #gameCanvas {
             background-color: #e8e6d9;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
@@ -1204,34 +1206,50 @@
         let h0BuffTimer = 0;
 
         // [비급] 통합 리사이즈 시스템 (타이틀/로비 정렬 해결책 적용 완료)
+        // [비급] 고정비(16:9) 유지 및 중앙 정렬 시스템
         function resizeGame() {
+            const container = document.getElementById('gameContainer');
             const targets = [
                 canvas,
                 document.getElementById('uiLayer'),
                 ...document.querySelectorAll('.screen')
             ];
 
-            let winW = window.innerWidth;
-            let winH = window.innerHeight;
-            let rotation = 0;
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
 
-            if (winH > winW) {
-                rotation = 90;
-                let temp = winW;
-                winW = winH;
-                winH = temp;
+            const baseW = 1920;
+            const baseH = 1080;
+            const baseRatio = baseW / baseH;
+            const winRatio = winW / winH;
+
+            let scale;
+
+            // 현재 화면이 게임 비율보다 더 가로로 길다면 (예: 갤럭시 폴드 펼친 상태 등)
+            if (winRatio > baseRatio) {
+                scale = winH / baseH; // 높이에 맞춤
+            } else {
+                scale = winW / baseW; // 너비에 맞춤
             }
 
-            const scale = Math.min(winW / 1920, winH / 1080);
+            // 컨테이너 자체의 크기를 조절하여 중앙 정렬 유지
+            container.style.width = `${baseW * scale}px`;
+            container.style.height = `${baseH * scale}px`;
 
+            // 모든 게임 레이어에 동일한 균등 배율 적용
             targets.forEach(el => {
                 if (el) {
-                    el.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
-                    el.style.top = "50%";
-                    el.style.left = "50%";
+                    el.style.transform = `scale(${scale})`;
+                    el.style.width = `${baseW}px`;
+                    el.style.height = `${baseH}px`;
                 }
             });
         }
+
+        // 이벤트 리스너 재등록 (입력 장치 최적화)
+        window.removeEventListener('resize', resizeGame);
+        window.addEventListener('resize', resizeGame);
+        window.addEventListener('orientationchange', () => setTimeout(resizeGame, 300));
 
         // 장면 전환 함수 단일화
         function showScreen(screenId) {
@@ -1811,19 +1829,22 @@
         }
 
         function updateMousePos(clientX, clientY) {
-            const rect = canvas.getBoundingClientRect();
             const isPortrait = window.matchMedia("(orientation: portrait)").matches || window.innerHeight > window.innerWidth;
 
             if (isPortrait) {
-                // 회전(90deg)된 상태에서의 정확한 좌표 매핑 (레터박스 여백 완벽 고려)
-                const scaleFactor = rect.width / H;
-                mouseX = (clientY - rect.top) / scaleFactor;
-                mouseY = H - ((clientX - rect.left) / scaleFactor);
+                // 세로 모드: 90도 회전 및 개별 스케일링된 상태 역산
+                let scaleX = window.innerHeight / 1920;
+                let scaleY = window.innerWidth / 1080;
+
+                mouseX = clientY / scaleX;
+                mouseY = (window.innerWidth - clientX) / scaleY;
             } else {
-                // 가로 모드 정상 매핑
-                const scaleFactor = rect.width / W;
-                mouseX = (clientX - rect.left) / scaleFactor;
-                mouseY = (clientY - rect.top) / scaleFactor;
+                // 가로 모드
+                let scaleX = window.innerWidth / 1920;
+                let scaleY = window.innerHeight / 1080;
+
+                mouseX = clientX / scaleX;
+                mouseY = clientY / scaleY;
             }
         }
 

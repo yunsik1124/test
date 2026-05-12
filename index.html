@@ -19,24 +19,24 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #000; /* 배경은 항상 암흑으로 처리 */
+            background-color: #000;
             width: 100vw;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             overflow: hidden;
-            position: fixed; /* 브라우저 스크롤 완벽 차단 */
+            position: fixed;
+            /* justify-content 제거: 왼쪽 밀착을 위해 */
+            display: block;
         }
 
         #gameContainer {
             position: absolute;
             width: 1920px;
             height: 1080px;
-            transform-origin: center center; /* 정중앙 기준 회전 및 스케일 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            /* 기준점을 왼쪽 위(0,0)로 고정 */
+            transform-origin: top left;
+            left: 0;
+            top: 0;
+            display: block;
         }
 
         #gameCanvas, #uiLayer, .screen {
@@ -1216,32 +1216,21 @@
             const container = document.getElementById('gameContainer');
             const winW = window.innerWidth;
             const winH = window.innerHeight;
-
             const baseW = 1920;
             const baseH = 1080;
 
             let scale;
-            let rotation = 0;
+            // 가로 모드 기준: 화면 높이에 맞춰 꽉 채우거나 가로에 맞춤
+            const scaleX = winW / baseW;
+            const scaleY = winH / baseH;
 
-            // [강제 가로모드 로직]
-            if (winH > winW) {
-                // 1. 세로로 들고 있을 때: 90도 회전 필요
-                rotation = 90;
-                const scaleX = winH / baseW;
-                const scaleY = winW / baseH;
-                scale = Math.min(scaleX, scaleY); // 비율 깨짐 방지 (정비율 정렬)
-            } else {
-                // 2. 가로로 들고 있을 때: 회전 없음
-                rotation = 0;
-                const scaleX = winW / baseW;
-                const scaleY = winH / baseH;
-                scale = Math.min(scaleX, scaleY); // 비율 깨짐 방지 (정비율 정렬)
-            }
+            // 화면에 꽉 차게 만들되 비율은 유지 (여백 최소화)
+            scale = Math.min(scaleX, scaleY);
 
-            // 컨테이너에 회전과 배율을 동시에 적용하여 정중앙 정렬
-            container.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
-            container.style.left = "50%";
-            container.style.top = "50%";
+            // 왼쪽 상단(0,0)에 고정하여 배율만 적용
+            container.style.transform = `scale(${scale})`;
+            container.style.left = "0px";
+            container.style.top = "0px";
         }
 
         // 초기 실행 및 리스너 등록

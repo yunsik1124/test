@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V13.1 - UX/UI 및 회복 로직 최적화</title>
+    <title>강철의 난: 무림수호맹 V13.2 - 무결점 최적화</title>
     <style>
         /* 용병 선택 시 버튼 딤드 처리 스타일 */
         .merc-btn.dimmed {
@@ -16,24 +16,29 @@
         /* === 기본 인게임 스타일 === */
         body {
             margin: 0;
+            padding: 0;
             background-color: #111;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: fixed; /* 모바일 밀림 방지 최적화 */
+            top: 0;
+            left: 0;
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            overscroll-behavior: none; /* 당겨서 새로고침 등 모바일 기본 액션 방지 */
             font-family: 'Malgun Gothic', sans-serif;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none;
             color: white;
+            /* touch-action: none; 삭제! (팝업창 내부 스크롤 방해 원인 타파) */
         }
 
         #gameContainer {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             background-color: #000;
             overflow: hidden;
         }
@@ -66,51 +71,50 @@
             align-items: center;
             background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
             pointer-events: auto;
-            display: none; /* 스크린 기본 숨김 처리 */
+            display: none;
             box-sizing: border-box;
             box-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
-        /* 모바일에서 텍스트가 너무 작아 보이지 않게 기본 폰트 크기 보정 추가 */
         h1 {
             font-size: 100px;
             color: #f1c40f;
             margin: 0;
         }
 
-        /* HUD 및 팝업 (크기 상향) */
+        /* HUD 및 팝업 */
         .hud-panel {
             position: absolute;
             top: 15px;
             right: 20px;
             background: rgba(0,0,0,0.85);
             border: 2px solid #f1c40f;
-            padding: 12px 24px; /* 크기 상향 */
+            padding: 16px 30px;
             border-radius: 8px;
             pointer-events: auto;
             display: flex;
-            gap: 25px; /* 간격 상향 */
+            gap: 30px;
             align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             z-index: 10;
         }
 
         .coin-text {
-            font-size: 24px; /* 폰트 상향 */
+            font-size: 28px;
             font-weight: bold;
             color: #f1c40f;
             text-shadow: 1px 1px 3px #000;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
         }
 
         .hud-btn {
             background: linear-gradient(180deg, #e67e22 0%, #d35400 100%);
             color: white;
             border: 1px solid #f39c12;
-            padding: 12px 24px; /* 패딩 상향 */
-            font-size: 22px; /* 폰트 상향 */
+            padding: 16px 32px;
+            font-size: 26px;
             cursor: pointer;
             font-weight: bold;
             border-radius: 5px;
@@ -128,7 +132,7 @@
         #midBossUI {
             position: absolute;
             top: 20px;
-            right: 550px; /* 위치 조정 */
+            right: 650px;
             display: none;
             z-index: 100;
             pointer-events: auto;
@@ -156,9 +160,9 @@
             color: white;
             border: 2px solid #e74c3c;
             border-radius: 50%;
-            width: 60px; /* 상향 */
-            height: 60px; /* 상향 */
-            font-size: 28px; /* 상향 */
+            width: 70px;
+            height: 70px;
+            font-size: 34px;
             cursor: pointer;
             animation: pulseAlert 1.2s infinite;
             display: flex;
@@ -174,38 +178,38 @@
         #midBossPrompt {
             display: none;
             position: absolute;
-            top: 70px;
+            top: 85px;
             right: 0;
             background: rgba(20, 20, 20, 0.95);
             border: 2px solid #e74c3c;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
-            width: 280px;
+            width: 320px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.8);
         }
 
         .mid-boss-prompt-text {
             color: #fff;
-            font-size: 16px; /* 상향 */
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             line-height: 1.4;
         }
 
         .mid-boss-btn-group {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
         }
 
         .mb-btn {
-            width: 60px;
-            height: 40px;
+            width: 80px;
+            height: 50px;
             border: none;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 22px;
             cursor: pointer;
             color: white;
             transition: 0.2s;
@@ -244,7 +248,7 @@
             border: 3px solid #f1c40f;
             border-radius: 12px;
             flex-direction: column;
-            padding: 20px;
+            padding: 25px;
             box-sizing: border-box;
             box-shadow: 0 0 50px rgba(0,0,0,0.95);
             z-index: 100;
@@ -263,14 +267,14 @@
             .popup-header h1 {
                 margin: 0;
                 color: #f1c40f;
-                font-size: 32px;
+                font-size: 42px;
                 text-shadow: 2px 2px 4px #000;
             }
 
         .header-controls {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
         }
 
         @keyframes blinkWarning {
@@ -283,7 +287,7 @@
         #gameOverWarning {
             display: none;
             color: #ff4757;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             animation: blinkWarning 1s infinite;
             text-shadow: 1px 1px 3px #000;
@@ -293,8 +297,8 @@
             background: #2980b9;
             color: white;
             border: none;
-            font-size: 18px;
-            padding: 8px 20px;
+            font-size: 22px;
+            padding: 12px 25px;
             cursor: pointer;
             border-radius: 6px;
             font-weight: bold;
@@ -311,8 +315,8 @@
             background: #c0392b;
             color: white;
             border: none;
-            font-size: 16px;
-            padding: 8px 15px;
+            font-size: 20px;
+            padding: 12px 20px;
             cursor: pointer;
             border-radius: 5px;
             font-weight: bold;
@@ -328,10 +332,11 @@
             flex: 1;
             gap: 20px;
             overflow: hidden;
+            touch-action: pan-y; /* 모바일 내부 스크롤 허용 */
         }
 
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 10px;
         }
 
         ::-webkit-scrollbar-track {
@@ -340,7 +345,7 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #444;
+            background: #555;
             border-radius: 4px;
         }
 
@@ -353,11 +358,11 @@
             background: #222;
             border-radius: 8px;
             border: 1px solid #444;
-            padding: 15px;
+            padding: 20px;
             overflow-y: auto;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: 25px;
             align-content: flex-start;
         }
 
@@ -366,7 +371,7 @@
             background: #1a1a2e;
             border-radius: 8px;
             border: 2px solid #8e44ad;
-            padding: 20px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -388,25 +393,25 @@
         }
 
         .skill-title {
-            font-size: 24px;
+            font-size: 30px;
             font-weight: bold;
             margin-bottom: 5px;
             padding-bottom: 8px;
             border-bottom: 2px solid rgba(255,255,255,0.1);
-            width: 90%;
+            width: 95%;
             text-align: center;
             text-shadow: 1px 1px 2px #000;
         }
 
         .skill-desc {
-            font-size: 13px;
+            font-size: 16px;
             color: #bdc3c7;
             margin-bottom: 20px;
             text-align: center;
         }
 
         .nodes-grid {
-            --grid-gap: 30px;
+            --grid-gap: 20px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: var(--grid-gap);
@@ -423,8 +428,8 @@
         }
 
         .node {
-            width: 110px;
-            height: 110px;
+            width: 130px;
+            height: 130px;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border: 3px solid #7f8c8d;
             border-radius: 50%;
@@ -460,13 +465,13 @@
                 .node.locked::after {
                     content: '🔒';
                     position: absolute;
-                    font-size: 30px;
+                    font-size: 36px;
                     opacity: 0.8;
                 }
 
             .node span {
                 color: white;
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 text-align: center;
                 line-height: 1.1;
@@ -477,27 +482,28 @@
 
             .node .lvl {
                 color: #f1c40f;
-                font-size: 12px;
+                font-size: 14px;
                 margin-top: 4px;
                 font-weight: bold;
                 background: rgba(0,0,0,0.5);
-                padding: 2px 8px;
+                padding: 3px 10px;
                 border-radius: 10px;
             }
 
         .hero-section h2 {
             color: #f1c40f;
+            font-size: 32px;
             margin-top: 0;
             text-align: center;
             border-bottom: 2px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
             width: 100%;
             flex-shrink: 0;
         }
 
         .hero-live2d-box {
-            width: 65%;
+            width: 75%;
             aspect-ratio: 5 / 6;
             background: rgba(0,0,0,0.6);
             border: 2px dashed #9b59b6;
@@ -507,42 +513,42 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             box-shadow: inset 0 0 20px #000;
             flex-shrink: 0;
         }
 
         .hero-spine-text {
             color: rgba(255,255,255,0.4);
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             position: absolute;
-            top: 15px;
+            top: 20px;
         }
 
         .hero-name-big {
-            font-size: 34px;
+            font-size: 44px;
             font-weight: bold;
             z-index: 2;
             margin-top: auto;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
             text-shadow: 2px 2px 5px #000;
         }
 
         .hero-desc-box {
             text-align: center;
             color: #bdc3c7;
-            font-size: 14px;
-            margin-bottom: 25px;
+            font-size: 18px;
+            margin-bottom: 30px;
             line-height: 1.5;
-            padding: 0 10px;
+            padding: 0 15px;
             flex-shrink: 0;
         }
 
         .hero-upgrades {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
             width: 100%;
             align-items: center;
             flex-shrink: 0;
@@ -552,8 +558,8 @@
             background: rgba(0,0,0,0.5);
             border: 1px solid #7f8c8d;
             border-radius: 40px;
-            padding: 5px 20px 5px 5px;
-            width: 90%;
+            padding: 8px 25px 8px 8px;
+            width: 95%;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -575,15 +581,15 @@
             }
 
         .hero-upg-circle {
-            width: 45px;
-            height: 45px;
+            width: 55px;
+            height: 55px;
             border-radius: 50%;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border: 2px solid #f1c40f;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12px;
+            font-size: 15px;
             font-weight: bold;
             color: white;
             flex-shrink: 0;
@@ -594,27 +600,27 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            margin-left: 12px;
+            margin-left: 15px;
             flex: 1;
             text-align: left;
         }
 
         .hero-upg-name {
             color: #fff;
-            font-size: 15px;
+            font-size: 20px;
             font-weight: bold;
         }
 
         .hero-upg-desc {
             color: #95a5a6;
-            font-size: 11px;
-            margin-top: 2px;
+            font-size: 14px;
+            margin-top: 4px;
         }
 
         .hero-upg-cost {
             color: #2ecc71;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 20px;
         }
 
         /* 타이틀 스크린 */
@@ -767,6 +773,7 @@
             background: rgba(0,0,0,0.6);
             border: 3px solid #f1c40f;
             border-radius: 20px;
+            touch-action: pan-y; /* 모바일 내부 스크롤 허용 */
         }
 
         .stage-node {
@@ -812,7 +819,7 @@
                 color: #fff;
             }
 
-        /* === 용병모집 및 버프 가로 배치 UI (상단 크기 상향) === */
+        /* === 용병모집 및 버프 가로 배치 UI === */
         .top-ui-wrapper {
             position: absolute;
             left: 20px;
@@ -828,9 +835,9 @@
         #mercenaryUI {
             display: flex;
             align-items: center;
-            gap: 20px; /* 상향 */
+            gap: 25px;
             background: rgba(0,0,0,0.85);
-            padding: 12px 20px; /* 상향 */
+            padding: 16px 26px;
             border: 2px solid #00d2d3;
             border-radius: 10px;
             pointer-events: auto;
@@ -842,18 +849,18 @@
         .merc-title {
             color: #0abde3;
             font-weight: bold;
-            font-size: 22px; /* 상향 */
+            font-size: 26px;
             text-shadow: 0 0 5px #0abde3;
             text-align: center;
             line-height: 1.2;
         }
 
         .merc-gauge-container {
-            width: 190px; /* 상향 */
-            height: 30px; /* 상향 */
+            width: 220px;
+            height: 35px;
             background: #222;
             border: 2px solid #00d2d3;
-            border-radius: 15px;
+            border-radius: 18px;
             overflow: hidden;
             position: relative;
         }
@@ -867,19 +874,19 @@
 
         .merc-slots-wrapper {
             display: flex;
-            gap: 8px;
+            gap: 10px;
         }
 
         .merc-slot {
-            width: 55px; /* 상향 */
-            height: 55px; /* 상향 */
+            width: 65px;
+            height: 65px;
             background: #111;
             border: 2px solid #f1c40f;
             border-radius: 8px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 28px; /* 상향 */
+            font-size: 34px;
             box-shadow: inset 0 0 10px #000;
         }
 
@@ -894,9 +901,9 @@
             background: #111;
             color: #0abde3;
             border: 2px solid #00d2d3;
-            width: 85px; /* 상향 */
-            height: 85px; /* 상향 */
-            font-size: 18px; /* 상향 */
+            width: 100px;
+            height: 100px;
+            font-size: 22px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
@@ -933,32 +940,31 @@
         #mercTraitInfo {
             display: none;
             position: absolute;
-            top: 95px;
+            top: 110px;
             color: #f1c40f;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             text-shadow: 1px 1px 3px #000;
             pointer-events: none;
             white-space: nowrap;
         }
 
-        /* 누적 버프 리스트 UI */
         #buffListUI {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
             pointer-events: auto;
             max-width: 600px;
-            margin-top: 25px; /* 상향 */
+            margin-top: 25px;
         }
 
         .buff-icon {
             background: rgba(39, 174, 96, 0.85);
             border: 2px solid #2ecc71;
             border-radius: 6px;
-            width: 55px; /* 상향 */
-            height: 55px; /* 상향 */
+            width: 65px;
+            height: 65px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -968,7 +974,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
             animation: popIn 0.3s ease-out;
             box-sizing: border-box;
-            gap: 2px;
+            gap: 3px;
             line-height: 1;
             padding: 0;
         }
@@ -1006,12 +1012,12 @@
             position: absolute;
             left: 20px;
             bottom: 220px;
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             background: rgba(0, 0, 0, 0.85);
             border: 2px solid #555;
             color: #555;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             border-radius: 8px;
             display: flex;
@@ -1046,13 +1052,13 @@
         #speedUpBtn {
             position: absolute;
             left: 20px;
-            bottom: 310px;
-            width: 80px;
-            height: 80px;
+            bottom: 320px;
+            width: 90px;
+            height: 90px;
             background: rgba(0, 0, 0, 0.85);
             border: 2px solid #555;
             color: #555;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
@@ -1112,8 +1118,8 @@
 
             <div class="hud-panel">
                 <div class="coin-text">
-                    <div style="font-size:20px;">⚔️ 전투 코인: <span id="battleCoinCount" style="color:white;">500</span></div>
-                    <div style="font-size:20px;">💎 천기 영석: <span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
+                    <div style="font-size:24px;">⚔️ 전투 코인: <span id="battleCoinCount" style="color:white;">500</span></div>
+                    <div style="font-size:24px;">💎 천기 영석: <span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
                 </div>
                 <button class="hud-btn" onclick="togglePopup(true)">수호 관청 (비급/영웅)</button>
             </div>
@@ -1128,7 +1134,7 @@
                     </div>
                     <div class="header-controls">
                         <div id="gameOverWarning">⚠️ 전사했소! 인게임 전투 코인은 소멸되나 영석은 보존되오!</div>
-                        <div style="color:white; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.5); padding:8px 15px; border-radius:8px;">보유 영석: 💎 <span id="popupCoin" style="color:#00d2d3;">0</span></div>
+                        <div style="color:white; font-size:28px; font-weight:bold; background:rgba(0,0,0,0.5); padding:10px 20px; border-radius:8px;">보유 영석: 💎 <span id="popupCoin" style="color:#00d2d3;">0</span></div>
                         <button class="close-btn" onclick="togglePopup(false)">전장으로 복귀 X</button>
                     </div>
                 </div>
@@ -1140,7 +1146,7 @@
 
             <div id="victoryOverlay">
                 <h2 id="victoryTitle">🏆 관문 돌파 성공! 🏆</h2>
-                <div id="victoryRewardText" style="font-size: 24px; color: #bdc3c7; margin-bottom: 40px; text-align: center; line-height: 1.5;"></div>
+                <div id="victoryRewardText" style="font-size: 28px; color: #bdc3c7; margin-bottom: 40px; text-align: center; line-height: 1.5;"></div>
                 <div class="vic-btn-group">
                     <button class="btn-large" style="background:linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); border-color:#2ecc71;" onclick="goToNextStage()">다음 관문 돌파</button>
                     <button class="btn-large" style="background:linear-gradient(135deg, #2980b9 0%, #3498db 100%); border-color:#3498db;" onclick="goToLobby()">로비로 귀환</button>
@@ -1203,7 +1209,6 @@
         let isSpeedUp = false;
         let h0BuffTimer = 0;
 
-        // [비급] 통합 리사이즈 시스템 (타이틀/로비 정렬 해결책 적용 완료)
         function resizeGame() {
             const targets = [
                 canvas,
@@ -1233,7 +1238,6 @@
             });
         }
 
-        // 장면 전환 함수 단일화
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
             document.getElementById('uiLayer').style.display = 'none';
@@ -1253,7 +1257,6 @@
             setTimeout(resizeGame, 10);
         }
 
-        // 중복 없이 리스너 등록
         window.addEventListener('resize', resizeGame);
         window.addEventListener('load', resizeGame);
         window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
@@ -1337,12 +1340,12 @@
 
         function saveGame() {
             const data = { upgrades, heroes, equippedHero, currentMaxStage, metaCoins };
-            localStorage.setItem('murimGuardiansSaveV13_1', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV13_2', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('murimGuardiansSaveV13_1');
+                const saved = localStorage.getItem('murimGuardiansSaveV13_2') || localStorage.getItem('murimGuardiansSaveV13_1');
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.upgrades) upgrades = data.upgrades;
@@ -1356,6 +1359,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
+                localStorage.removeItem('murimGuardiansSaveV13_2');
                 localStorage.removeItem('murimGuardiansSaveV13_1');
                 location.reload();
             }
@@ -1400,7 +1404,7 @@
             if (prompt.style.display !== 'block') {
                 pendingMidBossMulti = 0.5 + Math.random();
                 pendingMidBossReward = Math.floor((2000 + currentStage * 300) * pendingMidBossMulti);
-                document.querySelector('.mid-boss-prompt-text').innerHTML = `중간 보스 출현!<br>도전하시겠습니까?<br><span style="color:#00d2d3; font-size:14px;">(처치 보상: 영석 ${pendingMidBossReward})</span>`;
+                document.querySelector('.mid-boss-prompt-text').innerHTML = `중간 보스 출현!<br>도전하시겠습니까?<br><span style="color:#00d2d3; font-size:16px;">(처치 보상: 영석 ${pendingMidBossReward})</span>`;
                 prompt.style.display = 'block';
             } else { prompt.style.display = 'none'; }
         }
@@ -1516,7 +1520,16 @@
             wavePassBtn.innerHTML = "대기중";
             wavePassBtn.style.pointerEvents = 'none';
 
-            mercState = 'charging'; glitchGauge = 0; pendingMerc = null; updateMercUI();
+            mercState = 'charging'; glitchGauge = 0; pendingMerc = null;
+
+            // 용병 모집 버튼 리셋 버그 완전 수정
+            let mercBtn = document.getElementById('mercBtn');
+            mercBtn.classList.remove('dimmed');
+            mercBtn.classList.remove('ready');
+            mercBtn.style.background = "";
+            mercBtn.style.pointerEvents = 'auto';
+
+            updateMercUI();
             document.getElementById('mercTraitInfo').style.display = 'none';
 
             mercBuffAtk = 0; mercBuffSpd = 0; activeBuffsLog = [];
@@ -1618,25 +1631,26 @@
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                                    <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                                    ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                                    ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                                </div></div>`;
+                                                        <span>${detail.name}</span><div style="font-size:12px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
+                                                        ${!isMax ? `<div style="font-size:15px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:15px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                                        ${isLocked ? `<div style="font-size:11px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
+                                                    </div></div>`;
                 });
                 html += `</div></div>`; treeCon.innerHTML += html;
             });
 
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
+            // 절대 삭제하지 말라고 당부하신 '전용 비전 연마' 블록 완전 보존 및 폰트업 적용!
             heroContainer.innerHTML = `
-                                <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                                <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                                    <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                                    <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                                </div>
-                                <div class="hero-desc-box">${activeH.desc}</div>
-                                <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                            `;
+                                    <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
+                                    <div class="hero-live2d-box" style="border-color:${activeH.color};">
+                                        <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
+                                        <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
+                                    </div>
+                                    <div class="hero-desc-box">${activeH.desc}</div>
+                                    <div class="hero-upgrades" id="popupHeroUpgrades"></div>
+                                `;
 
             let upgsHtml = "";
             let upgTypes = [
@@ -1650,14 +1664,14 @@
                 let isMax = clvl >= 10;
                 let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
                 upgsHtml += `
-                                    <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                                        <div class="hero-upg-circle">Lv.${clvl}</div>
-                                        <div class="hero-upg-info">
-                                            <div class="hero-upg-name">${u.name}</div>
-                                            <div class="hero-upg-desc">${u.desc}</div>
-                                        </div>
-                                        <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                                    </button>`;
+                                        <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
+                                            <div class="hero-upg-circle">Lv.${clvl}</div>
+                                            <div class="hero-upg-info">
+                                                <div class="hero-upg-name">${u.name}</div>
+                                                <div class="hero-upg-desc">${u.desc}</div>
+                                            </div>
+                                            <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
+                                        </button>`;
             });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
@@ -1714,6 +1728,9 @@
             document.getElementById('mercGaugeFill').style.width = `${glitchGauge}%`;
             let btn = document.getElementById('mercBtn');
             if (mercState === 'charging') {
+                btn.classList.remove('dimmed');
+                btn.style.pointerEvents = 'auto';
+
                 if (glitchGauge >= 100) {
                     mercState = 'ready'; btn.innerHTML = "가동"; btn.classList.add('ready'); btn.style.background = "";
                 } else {
@@ -1730,7 +1747,7 @@
                 icon.className = 'buff-icon';
                 icon.style.borderColor = b.isAtk ? '#e74c3c' : '#3498db';
                 icon.style.background = b.isAtk ? 'rgba(192, 57, 43, 0.85)' : 'rgba(41, 128, 185, 0.85)';
-                icon.innerHTML = `<span style="font-size:22px;">${b.icon}</span><span style="font-size:14px; color:#f1c40f;">${b.val}%</span>`;
+                icon.innerHTML = `<span style="font-size:22px;">${b.icon}</span><span style="font-size:16px; color:#f1c40f;">${b.val}%</span>`;
                 container.appendChild(icon);
             });
         }
@@ -1914,7 +1931,7 @@
 
                             // 핵심: 용병 버튼 딤드 해제 및 UI 갱신
                             const mBtn = document.getElementById('mercBtn');
-                            if (mBtn) mBtn.classList.remove('dimmed');
+                            if (mBtn) { mBtn.classList.remove('dimmed'); mBtn.style.pointerEvents = 'auto'; }
                             updateMercUI();
                         }
 
@@ -1966,7 +1983,7 @@
             document.getElementById('victoryRewardText').innerHTML =
                 `관문 돌파 기본 보상: <span style="color:#00d2d3;">${stageFixedReward} 💎</span><br>` +
                 `잔여 전투 코인(<span style="color:white;">${battleCoins}</span>)의 20% 보너스: <span style="color:#00d2d3;">${coinBonusMeta} 💎</span><br>` +
-                `<br><span style="font-size:32px; color:#f1c40f; font-weight:bold; text-shadow: 0 0 10px rgba(241,196,15,0.5);">총 획득 천기 영석: ${totalReward} 개!</span>`;
+                `<br><span style="font-size:36px; color:#f1c40f; font-weight:bold; text-shadow: 0 0 10px rgba(241,196,15,0.5);">총 획득 천기 영석: ${totalReward} 개!</span>`;
         }
 
         function goToNextStage() { document.getElementById('victoryOverlay').style.display = 'none'; startBattle(currentStage); }
@@ -2034,7 +2051,7 @@
                         } else {
                             document.getElementById('mercGaugeFill').style.filter = "none";
                             let btn = document.getElementById('mercBtn');
-                         
+                            if (btn) btn.style.filter = "none"; // 보스전 이후 회색 필터가 고착되는 버그 복구!
                         }
 
                         let wavePassBtn = document.getElementById('wavePassBtn');
@@ -2544,105 +2561,106 @@
                                         } else { let hitEnemy = null; let enemiesInLane = enemies.filter(e => e.lane.id === p.laneId); if (enemiesInLane.length > 0) { enemiesInLane.sort((a, b) => Math.abs(a.x - p.tx) - Math.abs(b.x - p.tx)); hitEnemy = enemiesInLane[0]; } if (hitEnemy) { hitEnemy.hp -= finalDmg; hitEnemy.hitAnim = 6; applyLifesteal(p.char, finalDmg); if (p.char.poison) hitEnemy.poisoned = true; if (p.char.slow && hitEnemy.type !== 'boss' && hitEnemy.type !== 'midboss') hitEnemy.slowTimer = 75; createFloatingText(hitEnemy.x, hitEnemy.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); } }
                                     }
                                 }
-                                projectiles.splice(i, 1);
-                            } else if (isHit && p.type === 'midbossProj') {
-                                projectiles.splice(i, 1);
                             }
+                            projectiles.splice(i, 1);
+                        } else if (isHit && p.type === 'midbossProj') {
+                            projectiles.splice(i, 1);
                         }
+                    }
 
-                        for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+                    for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-                        // UI 렌더링 (하단 슬롯)
-                        ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
+                    // UI 렌더링 (하단 슬롯)
+                    ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
 
-                        ctx.fillStyle = "rgba(0,0,0,0.8)";
-                        ctx.fillRect(20, 900, 280, 160);
-                        ctx.strokeStyle = "#f1c40f";
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(20, 900, 280, 160);
-                        drawText(`[ 관문 ${currentStage}/10 ]`, 160, 935, 26, "#2ecc71");
-                        let remainSec = Math.ceil(waveTimer / 60);
-                        let waveStr = currentWave === 9 ? "웨이브 10/10 (보스전)" : `웨이브 ${currentWave + 1}/10 (${remainSec}초)`;
-                        drawText(waveStr, 160, 985, 24, "#3498db");
-                        drawText(`에너지: ${baseEnergy}% 危`, 160, 1030, 26, "#ff4757");
+                    ctx.fillStyle = "rgba(0,0,0,0.8)";
+                    ctx.fillRect(20, 900, 280, 160);
+                    ctx.strokeStyle = "#f1c40f";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(20, 900, 280, 160);
+                    drawText(`[ 관문 ${currentStage}/10 ]`, 160, 935, 26, "#2ecc71");
+                    let remainSec = Math.ceil(waveTimer / 60);
+                    let waveStr = currentWave === 9 ? "웨이브 10/10 (보스전)" : `웨이브 ${currentWave + 1}/10 (${remainSec}초)`;
+                    drawText(waveStr, 160, 985, 24, "#3498db");
+                    drawText(`에너지: ${baseEnergy}% 危`, 160, 1030, 26, "#ff4757");
 
-                        const slotWidth = 125;
-                        const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+                    const slotWidth = 125;
+                    const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
 
-                        deck.forEach((char, i) => {
-                            const bx = deckStartX + (i * slotWidth); const slotHeight = 160;
-                            ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333"; ctx.lineWidth = 4; ctx.strokeRect(bx, 910, slotWidth, slotHeight);
+                    deck.forEach((char, i) => {
+                        const bx = deckStartX + (i * slotWidth); const slotHeight = 160;
+                        ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333"; ctx.lineWidth = 4; ctx.strokeRect(bx, 910, slotWidth, slotHeight);
 
-                            let slotInnerW = slotWidth - 4; let slotInnerH = 110; let actualCost = getActualCost(char);
+                        let slotInnerW = slotWidth - 4; let slotInnerH = 110; let actualCost = getActualCost(char);
 
-                            if (char.state === 'deployed') {
-                                ctx.fillStyle = "#111"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
-                                drawText("배치됨", bx + (slotWidth / 2), 965, 22, "#555");
-                            }
-                            else if (char.state === 'waiting' || char.state === 'dead') {
-                                char.timer--; if (char.timer <= 0) char.state = 'ready';
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
-                                let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
-                                let ratio = char.timer / maxT;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH * ratio);
-                                drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), 965, 20, "#ff4757");
-                            }
-                            else {
-                                char.hp = getBase('hp', char.maxHp);
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
-                                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + 2, 912, slotInnerW, 30);
-                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), 927, 18, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
-                            }
-
-                            drawText(char.name, bx + (slotWidth / 2), 1035, 18, (char.state === 'ready') ? "white" : "#7f8c8d");
-                            drawText(`[${char.role}]`, bx + (slotWidth / 2), 1055, 14, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
-
-                            if (char.state === 'ready' && char.hp < getBase('hp', char.maxHp)) {
-                                ctx.fillStyle = "red"; ctx.fillRect(bx + 15, 1075, slotWidth - 30, 6);
-                                ctx.fillStyle = "lime"; ctx.fillRect(bx + 15, 1075, (slotWidth - 30) * (char.hp / getBase('hp', char.maxHp)), 6);
-                            }
-                        });
-
-                        ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
-                        let activeHeroObj = heroes.find(h => h.id === equippedHero);
-                        ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 30, 100, 100);
-                        drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 45, 32, "white");
-
-                        if (heroSlot.cd > 0 || heroSlot.activeTimer > 0) {
-                            let ratio = heroSlot.activeTimer > 0 ? (heroSlot.activeTimer / heroSlot.maxActive) : (1 - heroSlot.cd / heroSlot.maxCd);
-                            ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250 * ratio, 15);
-                            drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 270, heroSlot.y + 80, 26, "#aaa");
-                            if (heroSlot.cd > 0 && heroSlot.activeTimer <= 0) heroSlot.cd--;
+                        if (char.state === 'deployed') {
+                            ctx.fillStyle = "#111"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
+                            drawText("배치됨", bx + (slotWidth / 2), 965, 22, "#555");
+                        }
+                        else if (char.state === 'waiting' || char.state === 'dead') {
+                            char.timer--; if (char.timer <= 0) char.state = 'ready';
+                            ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
+                            let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
+                            let ratio = char.timer / maxT;
+                            ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH * ratio);
+                            drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), 965, 20, "#ff4757");
                         }
                         else {
-                            ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250, 15);
-                            drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 80, 30, "red");
+                            char.hp = getBase('hp', char.maxHp);
+                            ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
+                            ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + 2, 912, slotInnerW, 30);
+                            drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), 927, 18, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
                         }
 
-                        if (heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H); drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color); heroSlot.activeTimer--; }
-                        if (invincibleFrames > 0) { drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold"); }
-                        if (showWaveWarning > 0) { let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1)); drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`); showWaveWarning--; }
+                        drawText(char.name, bx + (slotWidth / 2), 1035, 18, (char.state === 'ready') ? "white" : "#7f8c8d");
+                        drawText(`[${char.role}]`, bx + (slotWidth / 2), 1055, 14, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
 
-                        if (timeStopFrames > 0) timeStopFrames--; if (invincibleFrames > 0) invincibleFrames--; frameCount++;
+                        if (char.state === 'ready' && char.hp < getBase('hp', char.maxHp)) {
+                            ctx.fillStyle = "red"; ctx.fillRect(bx + 15, 1075, slotWidth - 30, 6);
+                            ctx.fillStyle = "lime"; ctx.fillRect(bx + 15, 1075, (slotWidth - 30) * (char.hp / getBase('hp', char.maxHp)), 6);
+                        }
+                    });
+
+                    ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
+                    let activeHeroObj = heroes.find(h => h.id === equippedHero);
+                    ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 30, 100, 100);
+                    drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 45, 32, "white");
+
+                    if (heroSlot.cd > 0 || heroSlot.activeTimer > 0) {
+                        let ratio = heroSlot.activeTimer > 0 ? (heroSlot.activeTimer / heroSlot.maxActive) : (1 - heroSlot.cd / heroSlot.maxCd);
+                        ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250 * ratio, 15);
+                        drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 270, heroSlot.y + 80, 26, "#aaa");
+                        if (heroSlot.cd > 0 && heroSlot.activeTimer <= 0) heroSlot.cd--;
                     }
-                    else if (gameState === 'gameover') {
-                        ctx.fillStyle = "#000000";
-                        ctx.fillRect(0, 0, W, H);
-                        drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
-                        drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
-
-                        let bonusMeta = Math.floor(battleCoins * 0.1);
-                        drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
-                        drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
-
-                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
+                    else {
+                        ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250, 15);
+                        drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 80, 30, "red");
                     }
 
-                    ctx.restore();
+                    if (heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H); drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color); heroSlot.activeTimer--; }
+                    if (invincibleFrames > 0) { drawText("무적 발동!", W / 2, H / 2 - 150, 80, "gold"); }
+                    if (showWaveWarning > 0) { let warnAlpha = Math.abs(Math.sin(showWaveWarning * 0.1)); drawText("🚨 기계 마신왕 강림 경고 🚨", W / 2, H / 2 - 100, 100, `rgba(255, 71, 87, ${warnAlpha})`); showWaveWarning--; }
+
+                    if (timeStopFrames > 0) timeStopFrames--; if (invincibleFrames > 0) invincibleFrames--; frameCount++;
                 }
+                    else if (gameState === 'gameover') {
+                    ctx.fillStyle = "#000000";
+                    ctx.fillRect(0, 0, W, H);
+                    drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
+                    drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
+
+                    let bonusMeta = Math.floor(battleCoins * 0.1);
+                    drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
+                    drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
+
+                    ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
+                    drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
+                }
+
+                ctx.restore();
             }
+        }
         }
 
         loadGame();

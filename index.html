@@ -592,13 +592,16 @@
             font-size: 15px;
         }
 
-        /* === 스크린 분리 === */
+        /* === 스크린 분리 (가로모드 Full HD 대응) === */
         .screen {
             position: absolute;
-            top: 0;
-            left: 0;
+            inset: 0;
+            margin: auto;
             width: 100%;
             height: 100%;
+            max-width: 1920px;
+            max-height: 1080px;
+            aspect-ratio: 16 / 9;
             background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
             z-index: 1000;
             display: flex;
@@ -607,23 +610,26 @@
             align-items: center;
             display: none;
             pointer-events: auto;
+            box-sizing: border-box;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
         #titleScreen h1 {
-            font-size: 80px;
+            font-size: 120px; /* FHD 스케일업 */
             color: #f1c40f;
-            text-shadow: 0 0 30px rgba(241,196,15,0.8);
-            margin-bottom: 50px;
+            text-shadow: 0 0 40px rgba(241,196,15,0.8);
+            margin-bottom: 70px;
         }
 
         .btn-large {
             background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
             color: white;
-            border: 2px solid #ff7979;
-            padding: 20px 80px;
-            font-size: 36px;
+            border: 3px solid #ff7979;
+            padding: 25px 100px; /* FHD 스케일업 */
+            font-size: 48px; /* FHD 스케일업 */
             font-weight: bold;
-            border-radius: 12px;
+            border-radius: 16px;
             cursor: pointer;
             transition: 0.3s;
             box-shadow: 0 10px 20px rgba(192,57,43,0.5);
@@ -637,18 +643,19 @@
         .hero-carousel {
             display: flex;
             align-items: center;
-            gap: 50px;
-            margin-bottom: 40px;
+            gap: 80px; /* 간격 확대 */
+            margin-bottom: 50px;
         }
 
         .arrow-btn {
             background: none;
             border: none;
             color: #fff;
-            font-size: 80px;
+            font-size: 120px; /* 아이콘 확대 */
             cursor: pointer;
             transition: 0.2s;
             opacity: 0.6;
+            padding: 0 20px;
         }
 
             .arrow-btn:hover {
@@ -658,51 +665,64 @@
             }
 
         .hero-showcase {
-            width: 500px;
-            height: 600px;
+            width: 500px; /* 기존 600px에서 축소 */
+            height: 650px; /* 기존 750px에서 축소하여 상단 여유 확보 */
             background: rgba(0,0,0,0.5);
-            border: 4px solid #f1c40f;
-            box-shadow: 0 0 50px rgba(241,196,15,0.3);
+            border: 5px solid #f1c40f;
+            box-shadow: 0 0 40px rgba(241,196,15,0.3);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             position: relative;
             border-radius: 20px;
+            cursor: pointer; /* 클릭 가능한 요소임을 명시 */
+            transition: all 0.2s ease-in-out;
         }
 
+            /* 버튼 역할을 하므로 마우스를 올렸을 때 강조 효과 추가 */
+            .hero-showcase:hover {
+                transform: translateY(-5px) scale(1.02);
+                box-shadow: 0 15px 50px rgba(241,196,15,0.6);
+                border-color: #ffda79;
+            }
+
         #heroNameDisplay {
-            font-size: 40px;
+            font-size: 48px; /* 기존 56px에서 축소 */
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             z-index: 2;
+            text-shadow: 2px 2px 5px #000;
         }
 
         #heroDescDisplay {
-            font-size: 20px;
+            font-size: 22px; /* 기존 26px에서 축소 */
             color: #bdc3c7;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             text-align: center;
-            padding: 0 20px;
+            padding: 0 40px;
             z-index: 2;
+            line-height: 1.5;
+            word-break: keep-all;
         }
 
         #mapArea {
-            width: 1200px;
-            height: 700px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect width="100%" height="100%" fill="%23222"/><path d="M200,200 Q400,50 600,200 T1000,300 L1100,600 L100,600 Z" fill="%23333" stroke="%23555" stroke-width="5"/></svg>') no-repeat center;
+            width: 1500px; /* FHD 기준 지도 영역 확대 */
+            height: 850px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect width="100%" height="100%" fill="%23222"/><path d="M250,250 Q500,60 750,250 T1250,375 L1375,750 L125,750 Z" fill="%23333" stroke="%23555" stroke-width="6"/></svg>') no-repeat center;
+            background-size: cover;
             position: relative;
-            border: 4px solid #555;
-            border-radius: 20px;
-            box-shadow: inset 0 0 50px #000;
+            border: 5px solid #555;
+            border-radius: 25px;
+            box-shadow: inset 0 0 60px #000;
         }
 
         .map-node {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 60px; /* FHD 스케일업 */
+            height: 60px; /* FHD 스케일업 */
             background: #e74c3c;
-            border: 3px solid #fff;
+            border: 4px solid #fff;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             cursor: pointer;
@@ -714,7 +734,7 @@
 
             .map-node:hover {
                 transform: translate(-50%, -50%) scale(1.3);
-                box-shadow: 0 0 20px #e74c3c;
+                box-shadow: 0 0 25px #e74c3c;
             }
 
             .map-node.locked {
@@ -725,40 +745,41 @@
 
         .map-label {
             position: absolute;
-            top: -35px;
+            top: -45px;
             white-space: nowrap;
-            font-size: 20px;
+            font-size: 28px; /* FHD 스케일업 */
             font-weight: bold;
             color: #fff;
-            text-shadow: 2px 2px 4px #000;
+            text-shadow: 2px 2px 6px #000;
         }
 
         #stageContainer {
-            width: 800px;
-            height: 700px;
+            width: 1100px; /* FHD 스케일업 */
+            height: 800px; /* FHD 스케일업 */
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 25px;
             overflow-y: auto;
-            padding: 20px;
+            padding: 30px;
             background: rgba(0,0,0,0.6);
-            border: 2px solid #f1c40f;
-            border-radius: 15px;
+            border: 3px solid #f1c40f;
+            border-radius: 20px;
         }
 
         .stage-node {
-            width: 80%;
-            padding: 20px;
+            width: 85%;
+            padding: 30px; /* 패딩 확대 */
             background: linear-gradient(90deg, #2c3e50 0%, #34495e 100%);
-            border: 2px solid #7f8c8d;
-            border-radius: 10px;
+            border: 3px solid #7f8c8d;
+            border-radius: 12px;
             text-align: center;
             cursor: pointer;
-            font-size: 24px;
+            font-size: 36px; /* FHD 스케일업 */
             font-weight: bold;
             transition: 0.2s;
             flex-shrink: 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
 
             .stage-node:hover {
@@ -775,11 +796,14 @@
 
         .top-bar {
             position: absolute;
-            top: 20px;
-            left: 40px;
-            font-size: 30px;
+            top: 40px; /* FHD 기준 위치 조정 */
+            left: 60px; /* FHD 기준 위치 조정 */
+            font-size: 40px; /* FHD 스케일업 */
+            font-weight: bold;
             cursor: pointer;
             color: #bdc3c7;
+            text-shadow: 2px 2px 5px #000;
+            z-index: 10;
         }
 
             .top-bar:hover {
@@ -1130,17 +1154,18 @@
 
         <div id="heroSelectScreen" class="screen">
             <div class="top-bar" onclick="showScreen('titleScreen')">◀ 타이틀로</div>
-            <h2 style="font-size: 40px; color: #f1c40f; margin-bottom: 20px;">출정 영웅 선택</h2>
-            <div class="hero-carousel">
+            <h2 style="font-size: 46px; color: #f1c40f; margin-top: 50px; margin-bottom: 20px; text-shadow: 2px 2px 5px #000;">출정 영웅 선택</h2>
+
+            <div class="hero-carousel" style="margin-bottom: 0;">
                 <button class="arrow-btn" onclick="changeHero(-1)">&#10094;</button>
-                <div class="hero-showcase" id="heroShowcaseDiv">
+                <div class="hero-showcase" id="heroShowcaseDiv" onclick="confirmHeroSelection()">
                     <div style="color:rgba(255,255,255,0.3); font-size:24px; position:absolute; top:20px;">[ Spine Live 2D Area ]</div>
+
                     <div id="heroNameDisplay" style="color:#fff;">영웅 이름</div>
                     <div id="heroDescDisplay">영웅 설명</div>
                 </div>
                 <button class="arrow-btn" onclick="changeHero(1)">&#10095;</button>
             </div>
-            <button class="btn-large" onclick="confirmHeroSelection()">선택 완료 (지도 보기)</button>
         </div>
 
         <div id="regionSelectScreen" class="screen">

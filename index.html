@@ -16,6 +16,8 @@
         /* === 기본 인게임 스타일 === */
         /* === 기본 인게임 스타일 === */
         /* === 모바일 브라우저 바 대응 및 중앙 정렬 스타일 === */
+        /* [교체] body 및 container 스타일 */
+        /* [교체] 강제 가로모드 대응 body 및 container */
         body {
             margin: 0;
             padding: 0;
@@ -24,18 +26,17 @@
             height: 100vh;
             overflow: hidden;
             position: fixed;
-            /* justify-content 제거: 왼쪽 밀착을 위해 */
-            display: block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #gameContainer {
             position: absolute;
             width: 1920px;
             height: 1080px;
-            /* 기준점을 왼쪽 위(0,0)로 고정 */
-            transform-origin: top left;
-            left: 0;
-            top: 0;
+            background-color: #e8e6d9;
+            transform-origin: center center; /* 회전 시 중앙 기준 */
             display: block;
         }
 
@@ -1212,6 +1213,7 @@
 
         // [비급] 통합 리사이즈 시스템 (타이틀/로비 정렬 해결책 적용 완료)
         // [비급] 고정비(16:9) 유지 및 중앙 정렬 시스템
+        // [교체] 세로 모드일 때 강제로 90도 돌려버리는 리사이즈 시스템
         function resizeGame() {
             const container = document.getElementById('gameContainer');
             const winW = window.innerWidth;
@@ -1219,24 +1221,32 @@
             const baseW = 1920;
             const baseH = 1080;
 
-            let scale;
-            // 가로 모드 기준: 화면 높이에 맞춰 꽉 채우거나 가로에 맞춤
-            const scaleX = winW / baseW;
-            const scaleY = winH / baseH;
+            // 현재 기기가 세로 방향인지 확인
+            const isPortrait = winH > winW;
 
-            // 화면에 꽉 차게 만들되 비율은 유지 (여백 최소화)
-            scale = Math.min(scaleX, scaleY);
+            let scale, rotation = 0;
 
-            // 왼쪽 상단(0,0)에 고정하여 배율만 적용
-            container.style.transform = `scale(${scale})`;
-            container.style.left = "0px";
-            container.style.top = "0px";
+            if (isPortrait) {
+                // 세로 모드라면: 화면 너비에 게임의 높이를 맞추고 90도 회전
+                scale = Math.min(winW / baseH, winH / baseW);
+                rotation = 90;
+                // 회전 시 너비/높이가 뒤바뀌므로 좌표 보정은 CSS의 center 정렬이 처리함
+            } else {
+                // 가로 모드라면: 기존 방식대로 스케일만 조절
+                scale = Math.min(winW / baseW, winH / baseH);
+                rotation = 0;
+            }
+
+            container.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
         }
 
-        // 초기 실행 및 리스너 등록
-        window.addEventListener('resize', resizeGame);
-        window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
+        // 초기 실행 및 리스너 (기존 리스너 유지 또는 확인)
+        window.addEventListener('resize', () => {
+            resizeGame();
+            setTimeout(resizeGame, 300); // 모바일 브라우저 바 변화 대응
+        });
         window.addEventListener('load', resizeGame);
+        window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
 
         // 장면 전환 함수 단일화
         function showScreen(screenId) {
@@ -1818,15 +1828,24 @@
         // [비급] 좌측 밀착 상태에서도 1:1로 대응되는 터치 좌표 역산 함수
         function updateMousePos(clientX, clientY) {
             const container = document.getElementById('gameContainer');
-            const rect = container.getBoundingClientRect(); // 컨테이너의 실제 화면상 위치/크기
+            const rect = container.getBoundingClientRect();
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
 
-            // 현재 적용된 scale 배율을 역산하기 위해 rect의 너비를 기준값(1920)으로 나눔
-            const currentScale = rect.width / 1920;
+            // 현재 스케일값 계산 (회전 여부에 따라 기준 변동)
+            const isPortrait = winH > winW;
+            const currentScale = isPortrait ? rect.height / 1920 : rect.width / 1920;
 
-            // 터치한 절대 좌표(clientX)에서 컨테이너의 시작점(rect.left)을 뺀 후 배율로 나눔
-            // 이제 컨테이너가 왼쪽 끝에 붙어 있든, 살짝 떨어져 있든 무조건 내부 0~1920 좌표로 변환됨
-            mouseX = (clientX - rect.left) / currentScale;
-            mouseY = (clientY - rect.top) / currentScale;
+            if (isPortrait) {
+                // 세로 모드(90도 회전)일 때의 좌표 변환
+                // 터치X -> 게임Y, 터치Y -> 게임X 방향으로 역산
+                mouseX = (clientY - rect.top) / currentScale;
+                mouseY = (rect.right - clientX) / currentScale;
+            } else {
+                // 일반 가로 모드일 때
+                mouseX = (clientX - rect.left) / currentScale;
+                mouseY = (clientY - rect.top) / currentScale;
+            }
         }
 
         function handleInteract(e) {

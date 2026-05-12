@@ -1516,7 +1516,13 @@
             wavePassBtn.innerHTML = "대기중";
             wavePassBtn.style.pointerEvents = 'none';
 
-            mercState = 'charging'; glitchGauge = 0; pendingMerc = null; updateMercUI();
+            // ======= [수정된 부분] 용병 상태 초기화 시 버튼 딤드(먹통) 해제 =======
+            mercState = 'charging'; glitchGauge = 0; pendingMerc = null;
+            let mercBtn = document.getElementById('mercBtn');
+            if (mercBtn) mercBtn.classList.remove('dimmed'); // 이 줄이 핵심이오!
+            updateMercUI();
+            // ====================================================================
+
             document.getElementById('mercTraitInfo').style.display = 'none';
 
             mercBuffAtk = 0; mercBuffSpd = 0; activeBuffsLog = [];
@@ -1805,14 +1811,19 @@
         }
 
         function updateMousePos(clientX, clientY) {
-            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+            const rect = canvas.getBoundingClientRect();
+            const isPortrait = window.matchMedia("(orientation: portrait)").matches || window.innerHeight > window.innerWidth;
+
             if (isPortrait) {
-                mouseX = clientY * (W / window.innerHeight);
-                mouseY = (window.innerWidth - clientX) * (H / window.innerWidth);
+                // 회전(90deg)된 상태에서의 정확한 좌표 매핑 (레터박스 여백 완벽 고려)
+                const scaleFactor = rect.width / H;
+                mouseX = (clientY - rect.top) / scaleFactor;
+                mouseY = H - ((clientX - rect.left) / scaleFactor);
             } else {
-                const rect = canvas.getBoundingClientRect();
-                mouseX = (clientX - rect.left) * (W / rect.width);
-                mouseY = (clientY - rect.top) * (H / rect.height);
+                // 가로 모드 정상 매핑
+                const scaleFactor = rect.width / W;
+                mouseX = (clientX - rect.left) / scaleFactor;
+                mouseY = (clientY - rect.top) / scaleFactor;
             }
         }
 

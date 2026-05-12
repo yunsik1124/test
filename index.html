@@ -1887,16 +1887,14 @@
 
             // [3] 하단 UI 영역 (인벤토리 및 히어로 슬롯) 클릭 처리
             if (mouseY > 880) {
-                const slotWidth = 125;
-                const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+                const slotWidth = 155; // 확장된 너비 적용
+                const deckStartX = 350; // 중앙 정렬 해제 및 좌측 배치
+                const slotY = 900; // 변경된 높이 적용
 
-                // 일반 유닛 덱 클릭 시
                 for (let i = 0; i < deck.length; i++) {
                     const bx = deckStartX + (i * slotWidth);
-                    if (mouseX >= bx && mouseX <= bx + slotWidth && mouseY >= 910 && mouseY <= 1070) {
-                        // 용병 배치를 취소하고 일반 유닛을 선택할 경우 딤드 해제
+                    if (mouseX >= bx && mouseX <= bx + slotWidth && mouseY >= slotY && mouseY <= slotY + 160) {
                         document.getElementById('mercBtn').classList.remove('dimmed');
-
                         if (deck[i].state === 'ready') {
                             selectedInvenIdx = (selectedInvenIdx === i) ? -1 : i;
                         }
@@ -2611,41 +2609,41 @@
                         drawText(waveStr, 160, 985, 24, "#3498db");
                         drawText(`에너지: ${baseEnergy}% 危`, 160, 1030, 26, "#ff4757");
 
-                        const slotWidth = 125;
-                        const deckStartX = W / 2 - (deck.length * slotWidth) / 2;
+                        // [교체] 확장된 유닛 슬롯 렌더링 (Y축 900으로 정렬)
+                        const slotWidth = 155;
+                        const deckStartX = 350;
+                        const slotY = 900;
 
                         deck.forEach((char, i) => {
-                            const bx = deckStartX + (i * slotWidth); const slotHeight = 160;
-                            ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333"; ctx.lineWidth = 4; ctx.strokeRect(bx, 910, slotWidth, slotHeight);
+                            const bx = deckStartX + (i * slotWidth);
+                            ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333";
+                            ctx.lineWidth = 4;
+                            ctx.strokeRect(bx, slotY, slotWidth, 160);
 
-                            let slotInnerW = slotWidth - 4; let slotInnerH = 110; let actualCost = getActualCost(char);
+                            let slotInnerW = slotWidth - 10;
+                            let actualCost = getActualCost(char);
 
                             if (char.state === 'deployed') {
-                                ctx.fillStyle = "#111"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
-                                drawText("배치됨", bx + (slotWidth / 2), 965, 22, "#555");
-                            }
-                            else if (char.state === 'waiting' || char.state === 'dead') {
+                                ctx.fillStyle = "#111";
+                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
+                                drawText("배치됨", bx + (slotWidth / 2), slotY + 55, 24, "#555");
+                            } else if (char.state === 'waiting' || char.state === 'dead') {
                                 char.timer--; if (char.timer <= 0) char.state = 'ready';
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
+                                ctx.fillStyle = char.color;
+                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
                                 let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
-                                let ratio = char.timer / maxT;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.75)"; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH * ratio);
-                                drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), 965, 20, "#ff4757");
+                                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110 * (char.timer / maxT));
+                                drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), slotY + 55, 22, "#ff4757");
+                            } else {
+                                ctx.fillStyle = char.color;
+                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
+                                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 35);
+                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), slotY + 20, 22, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
                             }
-                            else {
-                                char.hp = getBase('hp', char.maxHp);
-                                ctx.fillStyle = char.color; ctx.fillRect(bx + 2, 912, slotInnerW, slotInnerH);
-                                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + 2, 912, slotInnerW, 30);
-                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), 927, 18, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
-                            }
-
-                            drawText(char.name, bx + (slotWidth / 2), 1035, 18, (char.state === 'ready') ? "white" : "#7f8c8d");
-                            drawText(`[${char.role}]`, bx + (slotWidth / 2), 1055, 14, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
-
-                            if (char.state === 'ready' && char.hp < getBase('hp', char.maxHp)) {
-                                ctx.fillStyle = "red"; ctx.fillRect(bx + 15, 1075, slotWidth - 30, 6);
-                                ctx.fillStyle = "lime"; ctx.fillRect(bx + 15, 1075, (slotWidth - 30) * (char.hp / getBase('hp', char.maxHp)), 6);
-                            }
+                            drawText(char.name, bx + (slotWidth / 2), slotY + 125, 22, (char.state === 'ready') ? "white" : "#7f8c8d");
+                            drawText(`[${char.role}]`, bx + (slotWidth / 2), slotY + 148, 16, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
                         });
 
                         ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);

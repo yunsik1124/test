@@ -1548,10 +1548,10 @@
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
                     html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                            <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                            ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                            ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                        </div></div>`;
+                                        <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
+                                        ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
+                                        ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
+                                    </div></div>`;
                 });
                 html += `</div></div>`; treeCon.innerHTML += html;
             });
@@ -1559,14 +1559,14 @@
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
             heroContainer.innerHTML = `
-                        <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                        <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                            <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                            <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                        </div>
-                        <div class="hero-desc-box">${activeH.desc}</div>
-                        <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                    `;
+                    <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
+                    <div class="hero-live2d-box" style="border-color:${activeH.color};">
+                        <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
+                        <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
+                    </div>
+                    <div class="hero-desc-box">${activeH.desc}</div>
+                    <div class="hero-upgrades" id="popupHeroUpgrades"></div>
+                `;
 
             let upgsHtml = "";
             let upgTypes = [
@@ -1580,14 +1580,14 @@
                 let isMax = clvl >= 10;
                 let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
                 upgsHtml += `
-                            <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                                <div class="hero-upg-circle">Lv.${clvl}</div>
-                                <div class="hero-upg-info">
-                                    <div class="hero-upg-name">${u.name}</div>
-                                    <div class="hero-upg-desc">${u.desc}</div>
-                                </div>
-                                <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                            </button>`;
+                        <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
+                            <div class="hero-upg-circle">Lv.${clvl}</div>
+                            <div class="hero-upg-info">
+                                <div class="hero-upg-name">${u.name}</div>
+                                <div class="hero-upg-desc">${u.desc}</div>
+                            </div>
+                            <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
+                        </button>`;
             });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
@@ -1767,14 +1767,21 @@
         function showVictoryPopup() {
             gameState = 'paused';
             document.getElementById('victoryOverlay').style.display = 'flex';
-            document.getElementById('victoryTitle').innerText = `🏆 관문 ${currentStage} 돌파 성공! 🏆`;
+            document.getElementById('victoryTitle').innerText = `🏆 제 ${currentStage} 관문 돌파 성공! 🏆`;
 
-            // 명확한 텍스트로 보상 고지
-            let bonusMeta = Math.floor(battleCoins * 0.1);
-            metaCoins += bonusMeta;
+            // [기획 변경 적용] 승리 보상 계산: 난이도별 고정 보상 + 잔여 코인의 20%
+            let stageFixedReward = currentStage * 300; // 관문(스테이지) 난이도 비례 고정 보상 (필요시 수치 조절)
+            let coinBonusMeta = Math.floor(battleCoins * 0.20); // 잔여 전투 코인의 20% 보너스
+            let totalReward = stageFixedReward + coinBonusMeta; // 최종 획득 영석 합산
+
+            metaCoins += totalReward;
             updateUI(); // UI 업데이트 적용
 
-            document.getElementById('victoryRewardText').innerHTML = `남은 전투 코인 <span style="color:white;">${battleCoins}</span>의 10%가 전환되어<br><span style="color:#00d2d3;">천기 영석 ${bonusMeta}개</span>를 획득하였소!`;
+            // 유저 인지 강화를 위해 획득 내역을 명확히 분리하여 렌더링
+            document.getElementById('victoryRewardText').innerHTML =
+                `관문 돌파 기본 보상: <span style="color:#00d2d3;">${stageFixedReward} 💎</span><br>` +
+                `잔여 전투 코인(<span style="color:white;">${battleCoins}</span>)의 20% 보너스: <span style="color:#00d2d3;">${coinBonusMeta} 💎</span><br>` +
+                `<br><span style="font-size:32px; color:#f1c40f; font-weight:bold; text-shadow: 0 0 10px rgba(241,196,15,0.5);">총 획득 천기 영석: ${totalReward} 개!</span>`;
         }
 
         function goToNextStage() { document.getElementById('victoryOverlay').style.display = 'none'; startBattle(currentStage); }
@@ -2086,7 +2093,7 @@
                             if (waveWaitTimer <= 0) {
                                 if (currentStage === currentMaxStage) currentMaxStage++;
                                 showVictoryPopup();
-                                saveGame();
+                                saveGame(); 
                             }
                         }
 
@@ -2209,7 +2216,7 @@
 
                                 if (enemiesInRange.length > 0) {
                                     if (s.char.projType === 'beam' || s.char.projType === 'straight') {
-                                        enemiesInRange.sort((a, b) => a.x - b.x);
+                                        enemiesInRange.sort((a, b) => a.x - b.x); 
                                     } else {
                                         enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); });
                                     }

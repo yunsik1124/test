@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V13.10 - 스케일 복원 및 전술 고도화</title>
+    <title>강철의 난: 무림수호맹 V13.11 - 시스템 안정화 및 밸런스 패치</title>
     <style>
-        /* 기존 CSS 동일 유지 */
         .merc-btn.dimmed {
             filter: grayscale(100%) brightness(0.6) !important;
             opacity: 0.6 !important;
@@ -1144,13 +1143,12 @@
 
         <div id="titleScreen" class="screen">
             <h1>[강철의 난: 무림수호맹]</h1>
-            <button class="btn-large" onclick="showScreen('heroSelectScreen')">게임 시작</button>
 
-            <button class="btn-large"
-                    onclick="showScreen('heroSelectScreen')"
-                    ontouchstart="showScreen('heroSelectScreen')">
-                게임 시작
-            </button>
+            <div id="loadingStatus" style="font-size: 30px; color: #0abde3; font-weight: bold; margin-bottom: 30px; text-shadow: 2px 2px 4px #000;">
+                무공 비급을 불러오는 중... (0%)
+            </div>
+
+            <button id="startGameBtn" class="btn-large" onclick="showScreen('heroSelectScreen')" style="display: none;">게임 시작</button>
         </div>
 
         <div id="heroSelectScreen" class="screen">
@@ -1204,6 +1202,52 @@
                 imageCache[key] = img;
             }
             return imageCache[key];
+        }
+
+        function preloadAllAssets(callback) {
+            let assetsToLoad = [];
+
+            deck.forEach(c => {
+                assetsToLoad.push({ id: c.id, type: 'char', src: `./assets/portraits/char_${c.id}.png` });
+                assetsToLoad.push({ id: c.id, type: 'ingame', src: `./assets/ingame/ingame_${c.id}.png` });
+            });
+
+            heroes.forEach(h => {
+                assetsToLoad.push({ id: h.id, type: 'hero', src: `./assets/portraits/hero_${h.id}.png` });
+            });
+
+            [8, 9, 10, 11, 12].forEach(id => {
+                assetsToLoad.push({ id: id, type: 'char', src: `./assets/portraits/char_${id}.png` });
+                assetsToLoad.push({ id: id, type: 'ingame', src: `./assets/ingame/ingame_${id}.png` });
+            });
+
+            let loadedCount = 0;
+            const totalAssets = assetsToLoad.length;
+            const loadingEl = document.getElementById('loadingStatus');
+            const startBtn = document.getElementById('startGameBtn');
+
+            if (totalAssets === 0) { callback(); return; }
+
+            assetsToLoad.forEach(asset => {
+                const img = new Image();
+                img.src = asset.src;
+                img.onload = img.onerror = () => {
+                    loadedCount++;
+                    const key = asset.type + '_' + asset.id;
+                    imageCache[key] = img;
+
+                    if (loadingEl) {
+                        let percent = Math.floor((loadedCount / totalAssets) * 100);
+                        loadingEl.innerText = `무공 비급을 불러오는 중... (${percent}%)`;
+                    }
+
+                    if (loadedCount >= totalAssets) {
+                        if (loadingEl) loadingEl.style.display = 'none';
+                        if (startBtn) startBtn.style.display = 'block';
+                        callback();
+                    }
+                };
+            });
         }
 
         let battleCoins = 500; let metaCoins = 0; let wavePassCost = 1000;
@@ -1278,10 +1322,9 @@
 
         let equippedHero = 'h4'; let heroIndex = 4;
 
-        // [v13.10] 속성 추가 (fontOffsetY, projOffsetX, projOffsetY, 사거리 상향 등)
         let deck = [
             { id: 1, name: '정파검사', role: '근거리공격', cost: 40, attackType: 'melee', range: 210, damage: 35, color: '#27ae60', maxCd: 19, hp: 200, maxHp: 200, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
-            { id: 2, name: '소림곤승', role: '탱커', cost: 50, attackType: 'melee', range: 150, damage: 25, color: '#f39c12', maxCd: 38, hp: 1200, maxHp: 1200, ingameScale: 1.25, fontOffsetY: 35, projOffsetX: 0, projOffsetY: 0 },
+            { id: 2, name: '소림곤승', role: '탱커', cost: 50, attackType: 'melee', range: 300, damage: 25, color: '#f39c12', maxCd: 38, hp: 1200, maxHp: 1200, ingameScale: 1.25, fontOffsetY: 35, projOffsetX: 0, projOffsetY: 0 },
             { id: 3, name: '정파궁수', role: '곡선원거리', cost: 100, attackType: 'ranged', projType: 'parabola', range: 580, damage: 25, color: '#3498db', maxCd: 25, hp: 60, maxHp: 60, accuracy: 0.8, ingameScale: 1.1, fontOffsetY: 15, projOffsetX: 0, projOffsetY: 0 },
             { id: 4, name: '당문암기', role: '직선독원거리', cost: 120, attackType: 'ranged', projType: 'straight', range: 1015, damage: 15, color: '#8e44ad', maxCd: 21, hp: 70, maxHp: 70, poison: true, friendlyFire: true, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
             { id: 5, name: '사파혈비도', role: '직선관통', cost: 160, attackType: 'ranged', projType: 'pierce', range: 870, damage: 16, color: '#9b59b6', maxCd: 50, hp: 120, maxHp: 120, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
@@ -1291,7 +1334,6 @@
         deck.sort((a, b) => a.cost - b.cost);
 
         const rows = 5; const cols = 10;
-        // [v13.10] 라인 세로 간격(rowHeight) 감소 및 시작점(startY) 조정
         const startX = 100; const startY = 280;
         const rowHeight = 120; const colWidth = 150;
         const skewX = 35;
@@ -1301,7 +1343,6 @@
             let currentY = startY + r * rowHeight;
             let currentBaseX = startX + r * skewX;
             let portalX = 1650 + r * skewX;
-            // [v13.10] 뒤로갈수록 작아지게 스케일 추가 (r이 0일 때 0.8, r이 4일 때 1.0)
             lanes.push({ id: r, y: currentY, startX: portalX, endX: currentBaseX - 30, scale: 0.8 + (r * 0.05), color: `rgba(52, 152, 219, 0.${2 + r})` });
             for (let c = 0; c < cols; c++) {
                 let zoneType = 'normal';
@@ -1317,12 +1358,12 @@
 
         function saveGame() {
             const data = { upgrades, heroes, equippedHero, currentMaxStage, metaCoins };
-            localStorage.setItem('murimGuardiansSaveV13_10', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV13_11', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('murimGuardiansSaveV13_10') || localStorage.getItem('murimGuardiansSaveV13_6');
+                const saved = localStorage.getItem('murimGuardiansSaveV13_11') || localStorage.getItem('murimGuardiansSaveV13_10') || localStorage.getItem('murimGuardiansSaveV13_6');
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.upgrades) upgrades = data.upgrades;
@@ -1336,6 +1377,7 @@
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
+                localStorage.removeItem('murimGuardiansSaveV13_11');
                 localStorage.removeItem('murimGuardiansSaveV13_10');
                 localStorage.removeItem('murimGuardiansSaveV13_6');
                 location.reload();
@@ -1452,7 +1494,6 @@
             document.getElementById('mercTraitInfo').style.display = 'none';
 
             mercBuffAtk = 0; mercBuffSpd = 0; activeBuffsLog = []; renderBuffIcons();
-            // [v13.10] facingDir 초기화
             deck.forEach(c => { c.state = 'ready'; c.timer = 0; c.hp = getBase('hp', c.maxHp); c.cd = 0; c.jumpAnim = 0; c.strikeAnim = 0; c.facingDir = 1; });
             fieldSlots.forEach(s => { s.char = null; });
             heroSlot.cd = 0; heroSlot.activeTimer = 0;
@@ -1551,7 +1592,6 @@
             if (mercState === 'charging') {
                 if (glitchGauge >= 100 && currentWave < 9) {
                     mercState = 'ready'; btn.innerHTML = "가동"; btn.classList.add('ready'); btn.style.background = "";
-                    // [v13.10] Auto-cast 추가
                     setTimeout(() => activateMercenary(), 50);
                 }
                 else { if (currentWave === 9) btn.innerHTML = "봉인됨"; else btn.innerHTML = "충전중"; btn.classList.remove('ready'); btn.style.background = ""; document.getElementById('mercTraitInfo').style.display = 'none'; }
@@ -1657,14 +1697,30 @@
             if (e.target.closest('button') || e.target.closest('.hud-panel') || e.target.closest('#mercenaryUI') || e.target.closest('.node') || e.target.closest('.popup-body')) return;
             updateMousePos(e.clientX, e.clientY); handleInteract(e);
         });
+
         container.addEventListener('touchmove', (e) => {
-            if (!e.target.closest('.popup-body')) e.preventDefault();
+            if (e.target.closest('.popup-body') || e.target.closest('#stageContainer') || e.target.closest('.screen')) {
+                return;
+            }
+            e.preventDefault();
             if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
+
         container.addEventListener('touchstart', (e) => {
-            if (!e.target.closest('.popup-body')) e.preventDefault();
-            if (e.target.closest('button') || e.target.closest('.hud-panel') || e.target.closest('#mercenaryUI') || e.target.closest('.node') || e.target.closest('.popup-body')) return;
-            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); handleInteract(e);
+            if (e.target.closest('button') ||
+                e.target.closest('.hud-panel') ||
+                e.target.closest('#mercenaryUI') ||
+                e.target.closest('.node') ||
+                e.target.closest('.popup-body') ||
+                e.target.closest('.screen') ||
+                e.target.closest('.map-node') ||
+                e.target.closest('.stage-node')) {
+                return;
+            }
+
+            e.preventDefault();
+            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
+            handleInteract(e);
         }, { passive: false });
 
         const fpsInterval = 1000 / 60; let then = performance.now();
@@ -1833,7 +1889,6 @@
                                     if (s.char.cd <= 0) {
                                         let targets = fieldSlots.filter(fs => fs.char && fs.char.hp < getBase('hp', fs.char.maxHp) && Math.hypot(fs.x - s.x, fs.y - s.y) <= s.char.range); if (targets.length > 0) {
                                             targets.sort((a, b) => a.char.hp - b.char.hp); let t = targets[0]; let distY = (t.y - 20) - (s.y - 30); let distX = t.x - s.x; let T = 29; let g = 0.87; let vx = distX / T; let vy = (distY - 0.5 * g * T * T) / T; let actualHeal = getBase('healInc', s.char.healAmount);
-                                            // [v13.10] 투사체 생성 시 오프셋 적용 및 방향 반영
                                             let projStartX = s.x + ((s.char.projOffsetX || 0) * (s.char.facingDir || 1));
                                             let projStartY = s.y - 30 + (s.char.projOffsetY || 0);
                                             projectiles.push({ type: 'heal_parabola', x: projStartX, y: projStartY, vx: vx, vy: vy, g: g, targetY: t.y - 20, color: s.char.color, target: t.char, heal: actualHeal }); s.char.cd = actualMaxCd;
@@ -1845,13 +1900,11 @@
                                     if (s.char.projType === 'beam' || s.char.projType === 'straight') { enemiesInRange.sort((a, b) => a.x - b.x); } else { enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); }); }
                                     let target = enemiesInRange[0]; let dmgStat = s.char.attackType === 'melee' ? 'atkMelee' : 'atkRanged'; let finalBaseDmg = (s.char.id === 999 || s.char.id > 7) ? s.char.damage : getBase(dmgStat, s.char.damage); let shootDir = target.x > s.x ? 1 : -1;
 
-                                    // [v13.10] 플립을 위한 타겟팅 방향 기억
                                     s.char.facingDir = shootDir;
 
                                     if (s.char.attackType === 'ranged') {
                                         if (s.char.cd <= 0) {
                                             let isMiss = s.char.projType !== 'pierce' && Math.random() > s.char.accuracy; let isCrit = !isMiss && Math.random() < getBase('critRate', 0); let targetX = target.x; let targetY = target.y - 20;
-                                            // [v13.10] 오프셋 적용
                                             let projStartX = s.x + ((s.char.projOffsetX || 0) * shootDir);
                                             let projStartY = s.y - 30 + (s.char.projOffsetY || 0);
 
@@ -1947,7 +2000,6 @@
 
                                 ctx.save(); ctx.translate(s.x + renderOffsetX, s.y + renderOffsetY); ctx.rotate(renderRotate);
 
-                                // [v13.10] 좌우 반전(Flip) 및 스케일 유지 보정
                                 let facingX = s.char.facingDir || 1;
                                 ctx.scale(scaleX * facingX, scaleY);
 
@@ -1958,7 +2010,6 @@
                                 }
 
                                 let cImg = getImage(s.char.id, 'ingame');
-                                // [v13.10] 원근 스케일 추가
                                 let laneScale = lanes[s.laneId].scale;
                                 let baseScale = (s.char.ingameScale || 1.0) * laneScale;
                                 let targetH = 250 * baseScale;
@@ -1971,17 +2022,14 @@
                                     ctx.fillStyle = s.char.color; ctx.fillRect(-(targetW / 2), -targetH + 10, targetW, targetH);
                                 }
 
-                                // 텍스트 및 HP 바 렌더링 시에는 좌우 반전을 다시 원복
                                 ctx.scale(facingX, 1);
 
-                                // [v13.10] 커스텀 폰트 오프셋 반영
                                 drawText(s.char.name, 0, -targetH - 10 + (s.char.fontOffsetY || 0), 22 * laneScale, "#fff");
                                 let curMaxHp = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp);
-                                // targetW(가변폭) 대신 60(고정폭)을 사용하고 두께도 6으로 고정
                                 let gaugeFixedWidth = 60;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // 배경바 추가 (시인성 확보)
+                                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
                                 ctx.fillRect(-(gaugeFixedWidth / 2), 15, gaugeFixedWidth, 6);
-                                ctx.fillStyle = "lime"; // 실제 체력바
+                                ctx.fillStyle = "lime";
                                 ctx.fillRect(-(gaugeFixedWidth / 2), 15, gaugeFixedWidth * (s.char.hp / curMaxHp), 6); ctx.restore();
 
                                 let currRangeTimer = s.char.showRangeTimer + 1;
@@ -2167,7 +2215,12 @@
             }
         }
 
-        loadGame(); showScreen('titleScreen'); requestAnimationFrame(gameLoop);
+        loadGame();
+        showScreen('titleScreen');
+
+        preloadAllAssets(() => {
+            requestAnimationFrame(gameLoop);
+        });
     </script>
 </body>
 </html>

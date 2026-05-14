@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>강철의 난: 무림수호맹 V13.1 - UX/UI 및 회복 로직 최적화</title>
+    <title>강철의 난: 무림수호맹 V13.10 - 스케일 복원 및 전술 고도화</title>
     <style>
-        /* 용병 선택 시 버튼 딤드 처리 스타일 */
+        /* 기존 CSS 동일 유지 */
         .merc-btn.dimmed {
-            filter: grayscale(100%) brightness(0.5); /* 흑백 및 어둡게 처리 */
-            opacity: 0.5; /* 반투명 처리 */
-            cursor: not-allowed; /* 클릭 불가 커서 */
-            pointer-events: none; /* 클릭 이벤트 차단 */
-            animation: none !important; /* 반짝이는 애니메이션 중지 */
+            filter: grayscale(100%) brightness(0.6) !important;
+            opacity: 0.6 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            animation: none !important;
+            box-shadow: none !important;
         }
-        /* === 기본 인게임 스타일 === */
-        /* === 기본 인게임 스타일 === */
-        /* === 모바일 브라우저 바 대응 및 중앙 정렬 스타일 === */
-        /* [교체] body 및 container 스타일 */
-        /* [교체] 강제 가로모드 대응 body 및 container */
+
         body {
             margin: 0;
             padding: 0;
@@ -26,7 +23,6 @@
             height: 100vh;
             overflow: hidden;
             position: fixed;
-            /* 중앙 정렬 제거, 왼쪽 위 기준 배치 */
             display: block;
         }
 
@@ -35,36 +31,37 @@
             width: 1920px;
             height: 1080px;
             background-color: #e8e6d9;
-            /* 회전 및 스케일 기준점을 왼쪽 위로 고정 */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             transform-origin: 0 0;
             top: 0;
             left: 0;
+            transition: background-image 0.5s ease-in-out;
         }
 
-        #gameCanvas, #uiLayer, .screen {
+        #gameCanvas, #uiLayer, #bottomUiLayer, .screen {
             position: absolute;
             width: 1920px;
             height: 1080px;
             top: 0;
             left: 0;
+            transform-origin: top left;
         }
 
-        /* 캔버스와 UI 레이어를 부모 박스에 가득 채움 */
-        #gameCanvas, #uiLayer, .screen {
-            position: absolute;
-            width: 1920px;
-            height: 1080px;
-            top: 0;
-            left: 0;
-            transform-origin: top left; /* 기준점을 왼쪽 위로 고정하여 계산 단순화 */
-        }
         #gameCanvas {
-            background-color: #e8e6d9;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 20;
+            pointer-events: none;
+            background: transparent;
         }
 
         #uiLayer {
-            z-index: 10;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        #bottomUiLayer {
+            z-index: 5;
             pointer-events: none;
         }
 
@@ -75,54 +72,63 @@
             align-items: center;
             background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
             pointer-events: auto;
-            display: none; /* 스크린 기본 숨김 처리 */
+            display: none;
             box-sizing: border-box;
             box-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
-        /* 모바일에서 텍스트가 너무 작아 보이지 않게 기본 폰트 크기 보정 추가 */
         h1 {
             font-size: 100px;
             color: #f1c40f;
             margin: 0;
         }
 
-        /* HUD 및 팝업 (크기 상향) */
         .hud-panel {
             position: absolute;
             top: 15px;
             right: 20px;
             background: rgba(0,0,0,0.85);
             border: 2px solid #f1c40f;
-            padding: 12px 24px; /* 크기 상향 */
+            padding: 10px 20px;
             border-radius: 8px;
             pointer-events: auto;
             display: flex;
-            gap: 25px; /* 간격 상향 */
+            gap: 30px;
             align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
             z-index: 10;
         }
 
         .coin-text {
-            font-size: 24px; /* 폰트 상향 */
-            font-weight: bold;
-            color: #f1c40f;
-            text-shadow: 1px 1px 3px #000;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
         }
+
+        .coin-display-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 220px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px #000;
+        }
+
+            .coin-display-row span:last-child {
+                text-align: right;
+                flex-grow: 1;
+            }
 
         .hud-btn {
             background: linear-gradient(180deg, #e67e22 0%, #d35400 100%);
             color: white;
             border: 1px solid #f39c12;
-            padding: 12px 24px; /* 패딩 상향 */
-            font-size: 22px; /* 폰트 상향 */
+            padding: 16px 28px;
+            font-size: 26px;
             cursor: pointer;
             font-weight: bold;
-            border-radius: 5px;
+            border-radius: 8px;
             transition: 0.2s;
             text-shadow: 1px 1px 2px #000;
         }
@@ -130,14 +136,12 @@
             .hud-btn:hover {
                 background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
                 transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(243, 156, 18, 0.4);
             }
 
-        /* 중간 보스 UI */
         #midBossUI {
             position: absolute;
-            top: 20px;
-            right: 550px; /* 위치 조정 */
+            top: 150px;
+            right: 50px;
             display: none;
             z-index: 100;
             pointer-events: auto;
@@ -165,9 +169,9 @@
             color: white;
             border: 2px solid #e74c3c;
             border-radius: 50%;
-            width: 60px; /* 상향 */
-            height: 60px; /* 상향 */
-            font-size: 28px; /* 상향 */
+            width: 120px;
+            height: 120px;
+            font-size: 70px;
             cursor: pointer;
             animation: pulseAlert 1.2s infinite;
             display: flex;
@@ -183,38 +187,46 @@
         #midBossPrompt {
             display: none;
             position: absolute;
-            top: 70px;
+            top: 85px;
             right: 0;
             background: rgba(20, 20, 20, 0.95);
             border: 2px solid #e74c3c;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
-            width: 280px;
+            width: 400px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.8);
         }
 
         .mid-boss-prompt-text {
             color: #fff;
-            font-size: 16px; /* 상향 */
+            font-size: 40px;
             font-weight: bold;
-            margin-bottom: 12px;
-            line-height: 1.4;
+            margin-bottom: 20px;
+            line-height: 1.6;
         }
+
+            .mid-boss-prompt-text span {
+                display: block;
+                margin-top: 10px;
+                font-size: 30px !important;
+                color: #00d2d3 !important;
+                text-shadow: 0 0 10px rgba(0, 210, 211, 0.5);
+            }
 
         .mid-boss-btn-group {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
         }
 
         .mb-btn {
-            width: 60px;
-            height: 40px;
+            width: 70px;
+            height: 50px;
             border: none;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 22px;
             cursor: pointer;
             color: white;
             transition: 0.2s;
@@ -248,7 +260,7 @@
             height: 96%;
             max-width: 1920px;
             max-height: 1080px;
-            aspect-ratio: 16 / 9;
+            aspect-ratio: 16/9;
             background: #1a1a1a;
             border: 3px solid #f1c40f;
             border-radius: 12px;
@@ -272,7 +284,7 @@
             .popup-header h1 {
                 margin: 0;
                 color: #f1c40f;
-                font-size: 32px;
+                font-size: 48px;
                 text-shadow: 2px 2px 4px #000;
             }
 
@@ -292,7 +304,7 @@
         #gameOverWarning {
             display: none;
             color: #ff4757;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             animation: blinkWarning 1s infinite;
             text-shadow: 1px 1px 3px #000;
@@ -302,13 +314,12 @@
             background: #2980b9;
             color: white;
             border: none;
-            font-size: 18px;
-            padding: 8px 20px;
+            font-size: 24px;
+            padding: 12px 30px;
             cursor: pointer;
             border-radius: 6px;
             font-weight: bold;
             transition: 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
             .close-btn:hover {
@@ -320,8 +331,8 @@
             background: #c0392b;
             color: white;
             border: none;
-            font-size: 16px;
-            padding: 8px 15px;
+            font-size: 20px;
+            padding: 12px 25px;
             cursor: pointer;
             border-radius: 5px;
             font-weight: bold;
@@ -380,7 +391,6 @@
             flex-direction: column;
             align-items: center;
             overflow-y: auto;
-            box-shadow: inset 0 0 30px rgba(142, 68, 173, 0.2);
         }
 
         .skill-branch {
@@ -393,34 +403,32 @@
             padding: 20px 15px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
 
         .skill-title {
-            font-size: 24px;
+            font-size: 32px;
             font-weight: bold;
-            margin-bottom: 5px;
-            padding-bottom: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 12px;
             border-bottom: 2px solid rgba(255,255,255,0.1);
             width: 90%;
             text-align: center;
-            text-shadow: 1px 1px 2px #000;
         }
 
         .skill-desc {
-            font-size: 13px;
+            font-size: 16px;
             color: #bdc3c7;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             text-align: center;
         }
 
         .nodes-grid {
-            --grid-gap: 30px;
+            --grid-gap: 40px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: var(--grid-gap);
             width: 100%;
-            padding: 10px 0;
+            padding: 15px 0;
             position: relative;
         }
 
@@ -432,8 +440,8 @@
         }
 
         .node {
-            width: 110px;
-            height: 110px;
+            width: 210px;
+            height: 210px;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border: 3px solid #7f8c8d;
             border-radius: 50%;
@@ -445,18 +453,15 @@
             transition: 0.2s;
             position: relative;
             z-index: 2;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
             .node:hover:not(.locked) {
                 border-color: #f1c40f;
                 transform: scale(1.08) translateY(-2px);
-                box-shadow: 0 6px 15px rgba(241, 196, 15, 0.4);
             }
 
             .node.max {
                 border-color: #27ae60;
-                box-shadow: 0 0 15px rgba(39, 174, 96, 0.6);
                 background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
             }
 
@@ -469,28 +474,27 @@
                 .node.locked::after {
                     content: '🔒';
                     position: absolute;
-                    font-size: 30px;
+                    font-size: 60px;
                     opacity: 0.8;
                 }
 
             .node span {
                 color: white;
-                font-size: 14px;
+                font-size: 26px;
                 font-weight: bold;
                 text-align: center;
-                line-height: 1.1;
+                line-height: 1.2;
                 word-break: keep-all;
-                padding: 0 4px;
-                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+                padding: 0 8px;
             }
 
             .node .lvl {
                 color: #f1c40f;
-                font-size: 12px;
-                margin-top: 4px;
+                font-size: 22px;
+                margin-top: 6px;
                 font-weight: bold;
                 background: rgba(0,0,0,0.5);
-                padding: 2px 8px;
+                padding: 4px 12px;
                 border-radius: 10px;
             }
 
@@ -499,15 +503,16 @@
             margin-top: 0;
             text-align: center;
             border-bottom: 2px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            font-size: 30px;
             width: 100%;
             flex-shrink: 0;
         }
 
         .hero-live2d-box {
-            width: 65%;
-            aspect-ratio: 5 / 6;
+            width: 70%;
+            aspect-ratio: 5/6;
             background: rgba(0,0,0,0.6);
             border: 2px dashed #9b59b6;
             border-radius: 10px;
@@ -516,33 +521,31 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            margin-bottom: 15px;
-            box-shadow: inset 0 0 20px #000;
+            margin-bottom: 20px;
             flex-shrink: 0;
         }
 
         .hero-spine-text {
             color: rgba(255,255,255,0.4);
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             position: absolute;
-            top: 15px;
+            top: 20px;
         }
 
         .hero-name-big {
-            font-size: 34px;
+            font-size: 44px;
             font-weight: bold;
             z-index: 2;
             margin-top: auto;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 5px #000;
+            margin-bottom: 35px;
         }
 
         .hero-desc-box {
             text-align: center;
             color: #bdc3c7;
-            font-size: 14px;
-            margin-bottom: 25px;
+            font-size: 18px;
+            margin-bottom: 35px;
             line-height: 1.5;
             padding: 0 10px;
             flex-shrink: 0;
@@ -551,7 +554,7 @@
         .hero-upgrades {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
             width: 100%;
             align-items: center;
             flex-shrink: 0;
@@ -560,15 +563,14 @@
         .hero-upg-btn {
             background: rgba(0,0,0,0.5);
             border: 1px solid #7f8c8d;
-            border-radius: 40px;
-            padding: 5px 20px 5px 5px;
+            border-radius: 50px;
+            padding: 12px 25px 12px 12px;
             width: 90%;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             transition: 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
 
             .hero-upg-btn:hover:not(:disabled) {
@@ -584,49 +586,47 @@
             }
 
         .hero-upg-circle {
-            width: 45px;
-            height: 45px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border: 2px solid #f1c40f;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             flex-shrink: 0;
-            box-shadow: inset 0 0 10px #000;
         }
 
         .hero-upg-info {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            margin-left: 12px;
+            margin-left: 18px;
             flex: 1;
             text-align: left;
         }
 
         .hero-upg-name {
             color: #fff;
-            font-size: 15px;
+            font-size: 22px;
             font-weight: bold;
         }
 
         .hero-upg-desc {
             color: #95a5a6;
-            font-size: 11px;
-            margin-top: 2px;
+            font-size: 14px;
+            margin-top: 5px;
         }
 
         .hero-upg-cost {
             color: #2ecc71;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 22px;
         }
 
-        /* 타이틀 스크린 */
         #titleScreen h1 {
             font-size: 120px;
             color: #f1c40f;
@@ -689,12 +689,11 @@
             position: relative;
             border-radius: 20px;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.2s;
         }
 
             .hero-showcase:hover {
                 transform: translateY(-5px) scale(1.02);
-                box-shadow: 0 15px 50px rgba(241,196,15,0.6);
                 border-color: #ffda79;
             }
 
@@ -821,15 +820,13 @@
                 color: #fff;
             }
 
-        /* === 용병모집 및 버프 가로 배치 UI (상단 크기 상향) === */
         .top-ui-wrapper {
             position: absolute;
             left: 20px;
-            top: 15px;
+            top: 20px;
             display: flex;
             align-items: flex-start;
-            gap: 20px;
-            z-index: 10;
+            gap: 15px;
             pointer-events: none;
             width: auto;
         }
@@ -837,11 +834,11 @@
         #mercenaryUI {
             display: flex;
             align-items: center;
-            gap: 20px; /* 상향 */
+            gap: 20px;
             background: rgba(0,0,0,0.85);
-            padding: 12px 20px; /* 상향 */
+            padding: 8px 15px;
             border: 2px solid #00d2d3;
-            border-radius: 10px;
+            border-radius: 12px;
             pointer-events: auto;
             box-shadow: 0 0 15px rgba(0,210,211,0.5);
             flex-shrink: 0;
@@ -851,18 +848,18 @@
         .merc-title {
             color: #0abde3;
             font-weight: bold;
-            font-size: 22px; /* 상향 */
+            font-size: 28px;
             text-shadow: 0 0 5px #0abde3;
             text-align: center;
             line-height: 1.2;
         }
 
         .merc-gauge-container {
-            width: 190px; /* 상향 */
-            height: 30px; /* 상향 */
+            width: 220px;
+            height: 35px;
             background: #222;
             border: 2px solid #00d2d3;
-            border-radius: 15px;
+            border-radius: 20px;
             overflow: hidden;
             position: relative;
         }
@@ -876,19 +873,19 @@
 
         .merc-slots-wrapper {
             display: flex;
-            gap: 8px;
+            gap: 10px;
         }
 
         .merc-slot {
-            width: 55px; /* 상향 */
-            height: 55px; /* 상향 */
+            width: 75px;
+            height: 75px;
             background: #111;
             border: 2px solid #f1c40f;
-            border-radius: 8px;
+            border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 28px; /* 상향 */
+            font-size: 36px;
             box-shadow: inset 0 0 10px #000;
         }
 
@@ -903,11 +900,11 @@
             background: #111;
             color: #0abde3;
             border: 2px solid #00d2d3;
-            width: 85px; /* 상향 */
-            height: 85px; /* 상향 */
-            font-size: 18px; /* 상향 */
+            width: 100px;
+            height: 100px;
+            font-size: 22px;
             font-weight: bold;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             transition: 0.2s;
             opacity: 0.6;
@@ -916,7 +913,6 @@
             align-items: center;
             text-align: center;
             line-height: 1.2;
-            padding: 0;
             box-sizing: border-box;
             word-break: keep-all;
         }
@@ -929,45 +925,36 @@
                 animation: glitchBlink 1s infinite alternate;
             }
 
-        @keyframes glitchBlink {
-            0% {
-                box-shadow: 0 0 5px #0abde3;
-            }
-
-            100% {
-                box-shadow: 0 0 25px #0abde3;
-            }
-        }
-
         #mercTraitInfo {
             display: none;
             position: absolute;
-            top: 95px;
+            top: 105px;
             color: #f1c40f;
-            font-size: 16px;
+            font-size: 26px;
             font-weight: bold;
-            text-shadow: 1px 1px 3px #000;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, -2px 0px 0 #000, 2px 0px 0 #000, 0px -2px 0 #000, 0px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(241, 196, 15, 0.5);
             pointer-events: none;
             white-space: nowrap;
         }
 
-        /* 누적 버프 리스트 UI */
         #buffListUI {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            align-items: center;
             pointer-events: auto;
-            max-width: 600px;
-            margin-top: 25px; /* 상향 */
+            width: 420px;
+            margin-top: 2px;
+            position: relative;
+            left: 0;
+            top: 0;
         }
 
         .buff-icon {
             background: rgba(39, 174, 96, 0.85);
             border: 2px solid #2ecc71;
             border-radius: 6px;
-            width: 55px; /* 상향 */
-            height: 55px; /* 상향 */
+            width: 50px;
+            height: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -979,10 +966,17 @@
             box-sizing: border-box;
             gap: 2px;
             line-height: 1;
-            padding: 0;
         }
 
-        /* 관문 돌파 오버레이 */
+            .buff-icon span:first-child {
+                font-size: 22px !important;
+            }
+
+            .buff-icon span:last-child {
+                font-size: 12px !important;
+                color: #f1c40f;
+            }
+
         #victoryOverlay {
             position: absolute;
             top: 0;
@@ -1010,22 +1004,19 @@
             gap: 30px;
         }
 
-        /* 웨이브 패스 버튼 */
-        /* [교체] 웨이브 패스 버튼 스타일 수정: 활성화 시 금색 점등 */
         #wavePassBtn {
             position: absolute;
-            left: 20px;
-            bottom: 220px;
-            width: 104px;
-            height: 104px;
+            left: 25px;
+            bottom: 250px;
+            width: 120px;
+            height: 120px;
             background: rgba(0, 0, 0, 0.85);
-            border: 3px solid #555; /* 기본은 어두운 회색 */
-            color: #555; /* 기본은 어두운 회색 */
-            font-size: 22px;
+            border: 4px solid #555;
+            color: #555;
+            font-size: 26px;
             font-weight: bold;
             border-radius: 12px;
             display: flex;
-            z-index: 20;
             transition: all 0.3s;
             pointer-events: none;
             align-items: center;
@@ -1034,34 +1025,32 @@
             line-height: 1.2;
             box-shadow: inset 0 0 15px #000;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
+            pointer-events: auto;
         }
 
-            /* 활성화 상태 (클릭 가능할 때) */
             #wavePassBtn.active {
-                border-color: #f1c40f !important; /* 금색 테두리 */
-                color: #f1c40f !important; /* 금색 글자 */
+                border-color: #f1c40f !important;
+                color: #f1c40f !important;
                 cursor: pointer;
                 pointer-events: auto;
                 box-shadow: 0 0 20px rgba(241, 196, 15, 0.5), inset 0 0 10px rgba(241, 196, 15, 0.2);
-                animation: pulseGold 1.5s infinite; /* 반짝이는 효과 추가 */
+                animation: pulseGold 1.5s infinite;
             }
 
-        /* [교체] 배속 버튼 스타일 수정: X2일 때 녹색 점등 */
         #speedUpBtn {
             position: absolute;
-            left: 20px;
-            bottom: 340px;
-            width: 104px;
-            height: 104px;
+            left: 25px;
+            bottom: 390px;
+            width: 120px;
+            height: 120px;
             background: rgba(0, 0, 0, 0.85);
-            border: 3px solid #555; /* 기본 회색 */
-            color: #555; /* 기본 회색 */
-            font-size: 30px;
+            border: 4px solid #555;
+            color: #555;
+            font-size: 34px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
-            z-index: 20;
             transition: all 0.3s;
             display: flex;
             align-items: center;
@@ -1070,49 +1059,23 @@
             box-shadow: inset 0 0 15px #000;
         }
 
-            /* X2 활성화 상태 */
             #speedUpBtn.active {
-                border-color: #2ecc71 !important; /* 녹색 테두리 */
-                color: #2ecc71 !important; /* 녹색 글자 */
+                border-color: #2ecc71 !important;
+                color: #2ecc71 !important;
                 box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
             }
-
-        /* 금색 반짝임 애니메이션 추가 */
-        @keyframes pulseGold {
-            0% {
-                transform: scale(1);
-                filter: brightness(1);
-            }
-
-            50% {
-                transform: scale(1.05);
-                filter: brightness(1.3);
-            }
-
-            100% {
-                transform: scale(1);
-                filter: brightness(1);
-            }
-        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="1920" height="1080" style="display:none;"></canvas>
-
-        <div id="uiLayer">
-            <button id="wavePassBtn">대기중</button>
-            <button id="speedUpBtn">X1</button>
-
+        <div id="bottomUiLayer">
             <div class="top-ui-wrapper">
                 <div id="mercenaryUI">
                     <div class="merc-title">용병<br>모집</div>
                     <div class="merc-gauge-container"><div id="mercGaugeFill"></div></div>
                     <div class="merc-slots-wrapper">
-                        <div class="merc-slot" id="mSlot1"></div>
-                        <div class="merc-slot" id="mSlot2"></div>
-                        <div class="merc-slot" id="mSlot3"></div>
-                        <div class="merc-slot" id="mSlot4"></div>
+                        <div class="merc-slot" id="mSlot1"></div><div class="merc-slot" id="mSlot2"></div>
+                        <div class="merc-slot" id="mSlot3"></div><div class="merc-slot" id="mSlot4"></div>
                     </div>
                     <div class="merc-btn-wrapper">
                         <button id="mercBtn" class="merc-btn" onclick="activateMercenary()">충전중</button>
@@ -1121,6 +1084,13 @@
                 </div>
                 <div id="buffListUI"></div>
             </div>
+        </div>
+
+        <canvas id="gameCanvas" width="1920" height="1080" style="display:none;"></canvas>
+
+        <div id="uiLayer">
+            <button id="wavePassBtn">대기중</button>
+            <button id="speedUpBtn">X1</button>
 
             <div id="midBossUI">
                 <button id="midBossIconBtn" onclick="toggleMidBossPrompt()">💀</button>
@@ -1135,8 +1105,8 @@
 
             <div class="hud-panel">
                 <div class="coin-text">
-                    <div style="font-size:20px;">⚔️ 전투 코인: <span id="battleCoinCount" style="color:white;">500</span></div>
-                    <div style="font-size:20px;">💎 천기 영석: <span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
+                    <div class="coin-display-row"><span style="color:#f1c40f;">⚔️ 전투 코인: </span><span id="battleCoinCount" style="color:white;">500</span></div>
+                    <div class="coin-display-row"><span style="color:#00d2d3;">💎 천기 영석: </span><span id="metaCoinCount" style="color:#00d2d3;">0</span></div>
                 </div>
                 <button class="hud-btn" onclick="togglePopup(true)">수호 관청 (비급/영웅)</button>
             </div>
@@ -1163,7 +1133,7 @@
 
             <div id="victoryOverlay">
                 <h2 id="victoryTitle">🏆 관문 돌파 성공! 🏆</h2>
-                <div id="victoryRewardText" style="font-size: 24px; color: #bdc3c7; margin-bottom: 40px; text-align: center; line-height: 1.5;"></div>
+                <div id="victoryRewardText" style="font-size: 28px; color: #bdc3c7; margin-bottom: 40px; text-align: center; line-height: 1.5;"></div>
                 <div class="vic-btn-group">
                     <button class="btn-large" style="background:linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); border-color:#2ecc71;" onclick="goToNextStage()">다음 관문 돌파</button>
                     <button class="btn-large" style="background:linear-gradient(135deg, #2980b9 0%, #3498db 100%); border-color:#3498db;" onclick="goToLobby()">로비로 귀환</button>
@@ -1179,7 +1149,6 @@
         <div id="heroSelectScreen" class="screen">
             <div class="top-bar" onclick="showScreen('titleScreen')">◀ 타이틀로</div>
             <h2 style="font-size: 46px; color: #f1c40f; margin-top: 50px; margin-bottom: 20px; text-shadow: 2px 2px 5px #000;">출정 영웅 선택</h2>
-
             <div class="hero-carousel" style="margin-bottom: 0;">
                 <button class="arrow-btn" onclick="changeHero(-1)">&#10094;</button>
                 <div class="hero-showcase" id="heroShowcaseDiv" onclick="confirmHeroSelection()">
@@ -1215,77 +1184,56 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const W = 1920;
-        const H = 1080;
+        const W = 1920; const H = 1080;
 
-        let battleCoins = 500;
-        let metaCoins = 0;
-        let wavePassCost = 1000;
-        let currentStage = 1;
-        let currentMaxStage = 1;
-        let isSpeedUp = false;
-        let h0BuffTimer = 0;
+        const imageCache = {};
+        function getImage(id, type = 'char') {
+            const key = type + '_' + id;
+            if (!imageCache[key]) {
+                const img = new Image();
+                if (type === 'char') { img.src = `./assets/portraits/char_${id}.png`; }
+                else if (type === 'ingame') { img.src = `./assets/ingame/ingame_${id}.png`; }
+                else if (type === 'hero') { img.src = `./assets/portraits/hero_${id}.png`; }
+                imageCache[key] = img;
+            }
+            return imageCache[key];
+        }
 
-        // [비급] 통합 리사이즈 시스템 (타이틀/로비 정렬 해결책 적용 완료)
-        // [비급] 고정비(16:9) 유지 및 중앙 정렬 시스템
-        // [교체] 세로 모드일 때 강제로 90도 돌려버리는 리사이즈 시스템
-        // [교체] 강제 왼쪽 정렬 및 가로모드 대응 리사이즈 시스템
+        let battleCoins = 500; let metaCoins = 0; let wavePassCost = 1000;
+        let currentStage = 1; let currentMaxStage = 1; let isSpeedUp = false; let h0BuffTimer = 0;
+
         function resizeGame() {
             const container = document.getElementById('gameContainer');
-            const winW = window.innerWidth;
-            const winH = window.innerHeight;
-            const baseW = 1920;
-            const baseH = 1080;
-
+            const winW = window.innerWidth; const winH = window.innerHeight;
+            const baseW = 1920; const baseH = 1080;
             const isPortrait = winH > winW;
             let scale, rotation = 0, tx = 0, ty = 0;
 
-            if (isPortrait) {
-                // 세로 모드: 왼쪽 위를 기점으로 90도 회전하여 세로 길이에 맞춤
-                scale = Math.min(winW / baseH, winH / baseW);
-                rotation = 90;
-                tx = winW; // 회전 후 오른쪽으로 밀려나는 것을 보정
-            } else {
-                // 가로 모드: 왼쪽 위 끝에 딱 붙임
-                scale = Math.min(winW / baseW, winH / baseH);
-                rotation = 0;
-            }
-
+            if (isPortrait) { scale = Math.min(winW / baseH, winH / baseW); rotation = 90; tx = winW; }
+            else { scale = Math.min(winW / baseW, winH / baseH); rotation = 0; }
             container.style.transform = `translate(${tx}px, ${ty}px) rotate(${rotation}deg) scale(${scale})`;
         }
 
-        // 초기 실행 및 리스너 (기존 리스너 유지 또는 확인)
-        window.addEventListener('resize', () => {
-            resizeGame();
-            setTimeout(resizeGame, 300); // 모바일 브라우저 바 변화 대응
-        });
+        window.addEventListener('resize', () => { resizeGame(); setTimeout(resizeGame, 300); });
         window.addEventListener('load', resizeGame);
         window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
 
-        // 장면 전환 함수 단일화
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
             document.getElementById('uiLayer').style.display = 'none';
+            document.getElementById('bottomUiLayer').style.display = 'none';
             canvas.style.display = 'none';
 
             if (screenId === '') {
-                canvas.style.display = 'block';
-                document.getElementById('uiLayer').style.display = 'block';
+                canvas.style.display = 'block'; document.getElementById('uiLayer').style.display = 'block'; document.getElementById('bottomUiLayer').style.display = 'block';
             } else {
                 const target = document.getElementById(screenId);
                 if (target) target.style.display = 'flex';
             }
-
             if (screenId === 'heroSelectScreen') updateHeroCarousel();
             if (screenId === 'regionSelectScreen') updateMapNodes();
-
             setTimeout(resizeGame, 10);
         }
-
-        // 중복 없이 리스너 등록
-        window.addEventListener('resize', resizeGame);
-        window.addEventListener('load', resizeGame);
-        window.addEventListener('orientationchange', () => setTimeout(resizeGame, 200));
 
         const skillCategories = [
             { id: '수호 공통 내공', color: '#2ecc71', desc: '모든 수호자의 기초 생존력 강화', stats: ['hp', 'def', 'regenHP', 'respawnReduc'] },
@@ -1308,10 +1256,7 @@
             'coinGain': { name: '전리품 노획', short: '영석증가', base: 9000, desc: '현상금 획득량 증가' }
         };
 
-        const unlockConditions = {
-            'atkSpeed': { reqCat: '수호 공통 내공', reqStat: 'hp', reqLvl: 20 },
-            'critRate': { reqCat: '무극 초식 연마', reqStat: 'atkSpeed', reqLvl: 20 }
-        };
+        const unlockConditions = { 'atkSpeed': { reqCat: '수호 공통 내공', reqStat: 'hp', reqLvl: 20 }, 'critRate': { reqCat: '무극 초식 연마', reqStat: 'atkSpeed', reqLvl: 20 } };
 
         let upgrades = { '수호 공통 내공': {}, '무극 초식 연마': {}, '암살 치명 비전': {} };
         skillCategories.forEach(cat => { cat.stats.forEach(s => upgrades[cat.id][s] = 0); });
@@ -1324,23 +1269,24 @@
             { id: 'h4', name: '천마강림', desc: '절대적인 마기로 공간을 장악하여 멈추고 파멸적인 폭발 피해를 주오.', color: '#8e44ad', upg: { cd: 0, effect: 0 }, upgDesc: { cd: '천기 누설 (쿨감)', effect: '폭발 타격 데미지 상승' } }
         ];
 
-        let equippedHero = 'h4';
-        let heroIndex = 4;
+        let equippedHero = 'h4'; let heroIndex = 4;
 
+        // [v13.10] 속성 추가 (fontOffsetY, projOffsetX, projOffsetY, 사거리 상향 등)
         let deck = [
-            { id: 4, name: '정파검사', role: '근거리공격', cost: 40, attackType: 'melee', range: 210, damage: 35, color: '#27ae60', cd: 0, maxCd: 19, hp: 200, maxHp: 200, state: 'ready', timer: 0, knockback: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, lungeDist: 0, strikeDirX: 1, strikeDirY: 0 },
-            { id: 2, name: '소림곤승', role: '탱커', cost: 50, attackType: 'melee', range: 100, damage: 25, color: '#f39c12', cd: 0, maxCd: 38, hp: 1200, maxHp: 1200, state: 'ready', timer: 0, knockback: true, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, pendingStrike: null },
-            { id: 1, name: '정파궁수', role: '곡선원거리', cost: 100, attackType: 'ranged', projType: 'parabola', range: 580, damage: 25, color: '#3498db', cd: 0, maxCd: 25, hp: 60, maxHp: 60, state: 'ready', timer: 0, accuracy: 0.8, aoe: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 },
-            { id: 6, name: '당문암기', role: '직선독원거리', cost: 120, attackType: 'ranged', projType: 'straight', range: 1015, damage: 15, color: '#8e44ad', cd: 0, maxCd: 21, hp: 70, maxHp: 70, state: 'ready', timer: 0, accuracy: 1.0, showRangeTimer: 0, poison: true, renderOffsetX: 0, jumpAnim: 0, friendlyFire: true },
-            { id: 7, name: '사파혈비도', role: '직선관통', cost: 160, attackType: 'ranged', projType: 'pierce', range: 870, damage: 16, color: '#9b59b6', cd: 0, maxCd: 50, hp: 120, maxHp: 120, state: 'ready', timer: 0, knockback: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, lungeDist: 0, friendlyFire: false },
-            { id: 5, name: '사파벽력탄', role: '곡선광역', cost: 200, attackType: 'ranged', projType: 'parabola', range: 600, damage: 150, color: '#e74c3c', cd: 0, maxCd: 58, hp: 80, maxHp: 80, state: 'ready', timer: 0, accuracy: 0.6, aoe: true, aoeRadius: 180, friendlyFire: true, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 },
-            { id: 9, name: '묘강독선', role: '광역힐러', cost: 200, attackType: 'heal', range: 300, healAmount: 50, color: '#2ecc71', cd: 0, maxCd: 33, hp: 80, maxHp: 80, state: 'ready', timer: 0, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 }
+            { id: 1, name: '정파검사', role: '근거리공격', cost: 40, attackType: 'melee', range: 210, damage: 35, color: '#27ae60', maxCd: 19, hp: 200, maxHp: 200, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
+            { id: 2, name: '소림곤승', role: '탱커', cost: 50, attackType: 'melee', range: 150, damage: 25, color: '#f39c12', maxCd: 38, hp: 1200, maxHp: 1200, ingameScale: 1.25, fontOffsetY: 35, projOffsetX: 0, projOffsetY: 0 },
+            { id: 3, name: '정파궁수', role: '곡선원거리', cost: 100, attackType: 'ranged', projType: 'parabola', range: 580, damage: 25, color: '#3498db', maxCd: 25, hp: 60, maxHp: 60, accuracy: 0.8, ingameScale: 1.1, fontOffsetY: 15, projOffsetX: 0, projOffsetY: 0 },
+            { id: 4, name: '당문암기', role: '직선독원거리', cost: 120, attackType: 'ranged', projType: 'straight', range: 1015, damage: 15, color: '#8e44ad', maxCd: 21, hp: 70, maxHp: 70, poison: true, friendlyFire: true, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
+            { id: 5, name: '사파혈비도', role: '직선관통', cost: 160, attackType: 'ranged', projType: 'pierce', range: 870, damage: 16, color: '#9b59b6', maxCd: 50, hp: 120, maxHp: 120, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
+            { id: 6, name: '사파벽력탄', role: '곡선광역', cost: 200, attackType: 'ranged', projType: 'parabola', range: 600, damage: 150, color: '#e74c3c', maxCd: 58, hp: 80, maxHp: 80, accuracy: 0.6, aoe: true, aoeRadius: 180, friendlyFire: true, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 },
+            { id: 7, name: '묘강독선', role: '광역힐러', cost: 200, attackType: 'heal', range: 300, healAmount: 50, color: '#2ecc71', maxCd: 33, hp: 80, maxHp: 80, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 }
         ];
         deck.sort((a, b) => a.cost - b.cost);
 
         const rows = 5; const cols = 10;
-        const startX = 100; const startY = 260;
-        const rowHeight = 135; const colWidth = 145;
+        // [v13.10] 라인 세로 간격(rowHeight) 감소 및 시작점(startY) 조정
+        const startX = 100; const startY = 280;
+        const rowHeight = 120; const colWidth = 150;
         const skewX = 35;
         const lanes = []; const fieldSlots = [];
 
@@ -1348,30 +1294,28 @@
             let currentY = startY + r * rowHeight;
             let currentBaseX = startX + r * skewX;
             let portalX = 1650 + r * skewX;
-            lanes.push({ id: r, y: currentY, startX: portalX, endX: currentBaseX - 30, scale: 1.0, color: `rgba(52, 152, 219, 0.${2 + r})` });
+            // [v13.10] 뒤로갈수록 작아지게 스케일 추가 (r이 0일 때 0.8, r이 4일 때 1.0)
+            lanes.push({ id: r, y: currentY, startX: portalX, endX: currentBaseX - 30, scale: 0.8 + (r * 0.05), color: `rgba(52, 152, 219, 0.${2 + r})` });
             for (let c = 0; c < cols; c++) {
                 let zoneType = 'normal';
                 let randZ = Math.random();
-                if (randZ < 0.05) zoneType = 'unbuildable';
-                else if (randZ < 0.1) zoneType = 'buff';
+                if (randZ < 0.05) zoneType = 'unbuildable'; else if (randZ < 0.1) zoneType = 'buff';
                 fieldSlots.push({ id: `R${r}C${c}`, x: currentBaseX + c * colWidth, y: currentY, char: null, laneId: r, zone: zoneType });
             }
         }
 
-        const heroSlot = { x: 1470, y: 900, w: 420, h: 160, cd: 0, maxCd: 1500, activeTimer: 0, maxActive: 166 };
+        const heroSlot = { x: 1470, y: 885, w: 420, h: 180, cd: 0, maxCd: 1500, activeTimer: 0, maxActive: 166 };
 
-        function getCategoryForKey(key) {
-            for (let cat of skillCategories) { if (cat.stats.includes(key)) return cat.id; } return null;
-        }
+        function getCategoryForKey(key) { for (let cat of skillCategories) { if (cat.stats.includes(key)) return cat.id; } return null; }
 
         function saveGame() {
             const data = { upgrades, heroes, equippedHero, currentMaxStage, metaCoins };
-            localStorage.setItem('murimGuardiansSaveV13_1', JSON.stringify(data));
+            localStorage.setItem('murimGuardiansSaveV13_10', JSON.stringify(data));
         }
 
         function loadGame() {
             try {
-                const saved = localStorage.getItem('murimGuardiansSaveV13_1');
+                const saved = localStorage.getItem('murimGuardiansSaveV13_10') || localStorage.getItem('murimGuardiansSaveV13_6');
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.upgrades) upgrades = data.upgrades;
@@ -1380,40 +1324,27 @@
                     if (data.currentMaxStage) currentMaxStage = data.currentMaxStage;
                     if (data.metaCoins) metaCoins = data.metaCoins;
                 }
-            } catch (e) { console.error("저장 데이터 불러오기 실패:", e); }
+            } catch (e) { console.error("데이터 로드 실패", e); }
         }
 
         function hardResetData() {
             if (confirm("모든 데이터를 포기하고 처음부터 다시 하시겠소?")) {
-                localStorage.removeItem('murimGuardiansSaveV13_1');
+                localStorage.removeItem('murimGuardiansSaveV13_10');
+                localStorage.removeItem('murimGuardiansSaveV13_6');
                 location.reload();
             }
         }
 
         function restartStage() {
             if (confirm("현재 관문을 처음부터 다시 시작하시겠소? (진행 중인 웨이브가 초기화되오)")) {
-                togglePopup(false);
-                startBattle(currentStage);
+                togglePopup(false); startBattle(currentStage);
             }
         }
 
-        let gameState = 'title';
-        let glitchGauge = 0;
-        let mercState = 'charging';
-        let pendingMerc = null;
-        let mercSpinFrames = 0;
-        let mercFinalIcons = [0, 0, 0, 0];
-        let mercFinalTier = 0;
-        let mercRewardType = 'merc';
-
-        let mercBuffAtk = 0;
-        let mercBuffSpd = 0;
-        let activeBuffsLog = [];
-
-        let midBossTriggeredWaves = [];
-        let pendingMidBossMulti = 1;
-        let pendingMidBossReward = 0;
-
+        let gameState = 'title'; let glitchGauge = 0; let mercState = 'charging';
+        let pendingMerc = null; let mercSpinFrames = 0; let mercFinalIcons = [0, 0, 0, 0];
+        let mercFinalTier = 0; let mercRewardType = 'merc'; let mercBuffAtk = 0; let mercBuffSpd = 0; let activeBuffsLog = [];
+        let midBossTriggeredWaves = []; let pendingMidBossMulti = 1; let pendingMidBossReward = 0;
         let baseEnergy = 100; let frameCount = 0; let selectedInvenIdx = -1;
         let timeStopFrames = 0; let invincibleFrames = 0; let isHeroTargeting = false; let shakeFrames = 0;
         let mouseX = 0; let mouseY = 0; let laneEffect = { laneId: -1, timer: 0 };
@@ -1429,108 +1360,69 @@
             if (prompt.style.display !== 'block') {
                 pendingMidBossMulti = 0.5 + Math.random();
                 pendingMidBossReward = Math.floor((2000 + currentStage * 300) * pendingMidBossMulti);
-                document.querySelector('.mid-boss-prompt-text').innerHTML = `중간 보스 출현!<br>도전하시겠습니까?<br><span style="color:#00d2d3; font-size:14px;">(처치 보상: 영석 ${pendingMidBossReward})</span>`;
+                document.querySelector('.mid-boss-prompt-text').innerHTML = `중간 보스 출현!<br>도전하시겠습니까?<br><span style="color:#00d2d3; font-size:16px;">(처치 보상: 영석 ${pendingMidBossReward})</span>`;
                 prompt.style.display = 'block';
             } else { prompt.style.display = 'none'; }
         }
 
         function acceptMidBoss() {
-            document.getElementById('midBossUI').style.display = 'none';
-            document.getElementById('midBossPrompt').style.display = 'none';
+            document.getElementById('midBossUI').style.display = 'none'; document.getElementById('midBossPrompt').style.display = 'none';
             let stageMulti = Math.pow(1.20, currentStage - 1);
             let statHp = Math.floor(1200 * stageMulti * pendingMidBossMulti);
             let statDmg = Math.floor(30 * stageMulti * pendingMidBossMulti);
             let lane = lanes[Math.floor(Math.random() * lanes.length)];
-            enemies.push({
-                type: 'midboss', x: lane.startX, y: lane.y, lane: lane,
-                hp: statHp, maxHp: statHp, slowTimer: 0, speed: 0.35, damage: statDmg,
-                color: '#8b0000', range: 2000, isRanged: true, projType: 'parabola', attackType: 'ranged', cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false,
-                reward: 200, metaReward: pendingMidBossReward
-            });
-            createFloatingText(W / 2, H / 2, "도전자 난입!!", "#e74c3c", true);
-            shakeFrames = 15;
+            enemies.push({ type: 'midboss', x: lane.startX, y: lane.y, lane: lane, hp: statHp, maxHp: statHp, slowTimer: 0, speed: 0.35, damage: statDmg, color: '#8b0000', range: 2000, isRanged: true, projType: 'parabola', attackType: 'ranged', cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: 200, metaReward: pendingMidBossReward });
+            createFloatingText(W / 2, H / 2, "도전자 난입!!", "#e74c3c", true); shakeFrames = 15;
         }
 
-        function declineMidBoss() {
-            document.getElementById('midBossUI').style.display = 'none';
-            document.getElementById('midBossPrompt').style.display = 'none';
-        }
+        function declineMidBoss() { document.getElementById('midBossUI').style.display = 'none'; document.getElementById('midBossPrompt').style.display = 'none'; }
 
         function updateHeroCarousel() {
-            let h = heroes[heroIndex];
-            document.getElementById('heroNameDisplay').innerText = h.name;
-            document.getElementById('heroNameDisplay').style.color = h.color;
-            document.getElementById('heroDescDisplay').innerText = h.desc;
-            document.getElementById('heroShowcaseDiv').style.borderColor = h.color;
+            let h = heroes[heroIndex]; document.getElementById('heroNameDisplay').innerText = h.name; document.getElementById('heroNameDisplay').style.color = h.color;
+            document.getElementById('heroDescDisplay').innerText = h.desc; document.getElementById('heroShowcaseDiv').style.borderColor = h.color;
         }
-
-        function changeHero(dir) {
-            heroIndex += dir;
-            if (heroIndex < 0) heroIndex = heroes.length - 1;
-            if (heroIndex >= heroes.length) heroIndex = 0;
-            updateHeroCarousel();
-        }
-
-        function confirmHeroSelection() {
-            equippedHero = heroes[heroIndex].id;
-            saveGame();
-            showScreen('regionSelectScreen');
-        }
+        function changeHero(dir) { heroIndex += dir; if (heroIndex < 0) heroIndex = heroes.length - 1; if (heroIndex >= heroes.length) heroIndex = 0; updateHeroCarousel(); }
+        function confirmHeroSelection() { equippedHero = heroes[heroIndex].id; saveGame(); showScreen('regionSelectScreen'); }
 
         function updateMapNodes() {
             let maxRegion = Math.floor((currentMaxStage - 1) / 10);
-            let nodes = document.querySelectorAll('.map-node');
-            nodes.forEach((node, i) => {
-                if (i <= maxRegion) { node.classList.remove('locked'); node.style.background = '#e74c3c'; }
-                else { node.classList.add('locked'); node.style.background = '#555'; }
+            document.querySelectorAll('.map-node').forEach((node, i) => {
+                if (i <= maxRegion) { node.classList.remove('locked'); node.style.background = '#e74c3c'; } else { node.classList.add('locked'); node.style.background = '#555'; }
             });
         }
-
         function selectRegion(rIdx) {
             let maxRegion = Math.floor((currentMaxStage - 1) / 10);
             if (rIdx > maxRegion) { alert("아직 해금되지 않은 지역이오!"); return; }
             let regionNames = ["화산 (華山)", "소림 (少林)", "무당 (武當)", "개방 (丐幫)", "아미 (峨嵋)", "곤륜 (崑崙)", "마교 (魔敎)"];
-            document.getElementById('regionTitleDisplay').innerText = regionNames[rIdx];
-            renderStages(rIdx);
-            showScreen('stageSelectScreen');
+            document.getElementById('regionTitleDisplay').innerText = regionNames[rIdx]; renderStages(rIdx); showScreen('stageSelectScreen');
         }
 
         function renderStages(rIdx) {
-            let container = document.getElementById('stageContainer');
-            container.innerHTML = '';
-            let startStage = rIdx * 10 + 1;
-            let endStage = startStage + 9;
-
+            let container = document.getElementById('stageContainer'); container.innerHTML = '';
+            let startStage = rIdx * 10 + 1; let endStage = startStage + 9;
             for (let s = startStage; s <= endStage; s++) {
-                let node = document.createElement('div');
-                node.className = 'stage-node';
-                if (s > currentMaxStage) node.classList.add('locked');
-                node.innerText = `제 ${s} 관문`;
-                node.onclick = () => {
-                    if (s <= currentMaxStage) startBattle(s);
-                    else alert("이전 관문을 먼저 돌파하시오!");
-                };
-                container.appendChild(node);
+                let node = document.createElement('div'); node.className = 'stage-node';
+                if (s > currentMaxStage) node.classList.add('locked'); node.innerText = `제 ${s} 관문`;
+                node.onclick = () => { if (s <= currentMaxStage) startBattle(s); else alert("이전 관문을 먼저 돌파하시오!"); }; container.appendChild(node);
             }
         }
 
         document.getElementById('speedUpBtn').addEventListener('click', function () {
-            isSpeedUp = !isSpeedUp;
-            this.innerHTML = isSpeedUp ? 'X2' : 'X1';
-            if (isSpeedUp) this.classList.add('active');
-            else this.classList.remove('active');
+            isSpeedUp = !isSpeedUp; this.innerHTML = isSpeedUp ? 'X2' : 'X1';
+            if (isSpeedUp) this.classList.add('active'); else this.classList.remove('active');
         });
 
         function startBattle(stageNum) {
             currentStage = stageNum;
-            gameState = 'playing';
-            battleCoins = 500;
-            wavePassCost = 1000;
-            baseEnergy = 100; frameCount = 0; selectedInvenIdx = -1;
-            timeStopFrames = 0; invincibleFrames = 0; isHeroTargeting = false; shakeFrames = 0;
+            gameState = 'playing'; battleCoins = 500; wavePassCost = 1000;
+
+            let currentRegionIdx = Math.floor((currentStage - 1) / 10);
+            const gameContainer = document.getElementById('gameContainer');
+            gameContainer.style.backgroundImage = `url('./assets/backgrounds/bg_region_${currentRegionIdx}.jpg')`;
+
+            baseEnergy = 100; frameCount = 0; selectedInvenIdx = -1; timeStopFrames = 0; invincibleFrames = 0; isHeroTargeting = false; shakeFrames = 0;
             enemies = []; projectiles = []; floatingTexts = []; laneEffect = { laneId: -1, timer: 0 };
             currentWave = 0; waveState = 'stage_intro'; waveWaitTimer = 90; waveTimer = waveDurations[0]; enemiesSpawned = 0; bossSpawned = false;
-
             midBossTriggeredWaves = [];
 
             document.querySelector('.top-ui-wrapper').style.display = 'flex';
@@ -1541,170 +1433,86 @@
             document.getElementById('midBossPrompt').style.display = 'none';
 
             let wavePassBtn = document.getElementById('wavePassBtn');
-            wavePassBtn.classList.remove('active');
-            wavePassBtn.innerHTML = "대기중";
-            wavePassBtn.style.pointerEvents = 'none';
+            wavePassBtn.classList.remove('active'); wavePassBtn.innerHTML = "대기중"; wavePassBtn.style.pointerEvents = 'none';
 
-            // ======= [수정된 부분] 용병 상태 초기화 시 버튼 딤드(먹통) 해제 =======
             mercState = 'charging'; glitchGauge = 0; pendingMerc = null;
             let mercBtn = document.getElementById('mercBtn');
-            if (mercBtn) mercBtn.classList.remove('dimmed'); // 이 줄이 핵심이오!
+            if (mercBtn) {
+                mercBtn.classList.remove('dimmed'); mercBtn.style.pointerEvents = "auto"; mercBtn.style.filter = "none";
+                mercBtn.style.backgroundImage = "none";
+            }
             updateMercUI();
-            // ====================================================================
-
             document.getElementById('mercTraitInfo').style.display = 'none';
 
-            mercBuffAtk = 0; mercBuffSpd = 0; activeBuffsLog = [];
-            renderBuffIcons();
-
-            deck.forEach(c => { c.state = 'ready'; c.timer = 0; c.hp = getBase('hp', c.maxHp); c.cd = 0; c.jumpAnim = 0; c.strikeAnim = 0; });
+            mercBuffAtk = 0; mercBuffSpd = 0; activeBuffsLog = []; renderBuffIcons();
+            // [v13.10] facingDir 초기화
+            deck.forEach(c => { c.state = 'ready'; c.timer = 0; c.hp = getBase('hp', c.maxHp); c.cd = 0; c.jumpAnim = 0; c.strikeAnim = 0; c.facingDir = 1; });
             fieldSlots.forEach(s => { s.char = null; });
             heroSlot.cd = 0; heroSlot.activeTimer = 0;
 
             document.getElementById('victoryOverlay').style.display = 'none';
-
-            updateUI();
-            showScreen('');
+            updateUI(); showScreen('');
         }
 
         function updateUI() {
-            document.getElementById('battleCoinCount').innerText = battleCoins;
-            document.getElementById('metaCoinCount').innerText = metaCoins;
-            document.getElementById('popupCoin').innerText = metaCoins;
+            document.getElementById('battleCoinCount').innerText = battleCoins; document.getElementById('metaCoinCount').innerText = metaCoins; document.getElementById('popupCoin').innerText = metaCoins;
         }
 
-        function quitToLobby() {
-            gameState = 'title';
-            togglePopup(false);
-            showScreen('heroSelectScreen');
-        }
+        function quitToLobby() { gameState = 'title'; togglePopup(false); showScreen('heroSelectScreen'); }
 
         function togglePopup(show) {
             document.getElementById('upgradePopup').style.display = show ? 'flex' : 'none';
-            if (show) {
-                document.getElementById('gameOverWarning').style.display = (gameState === 'gameover' || baseEnergy <= 0) ? 'block' : 'none';
-                if (gameState !== 'gameover') gameState = 'paused';
-                renderPopup();
-            } else {
-                if (gameState !== 'gameover') gameState = 'playing';
-            }
+            if (show) { document.getElementById('gameOverWarning').style.display = (gameState === 'gameover' || baseEnergy <= 0) ? 'block' : 'none'; if (gameState !== 'gameover') gameState = 'paused'; renderPopup(); }
+            else { if (gameState !== 'gameover') gameState = 'playing'; }
         }
 
         function buyUpgrade(catId, statKey) {
-            let lvl = upgrades[catId][statKey]; let detail = statDetails[statKey];
-            if (lvl >= 100) return;
-
-            if (unlockConditions[statKey]) {
-                let req = unlockConditions[statKey];
-                if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) return;
-            }
-
+            let lvl = upgrades[catId][statKey]; let detail = statDetails[statKey]; if (lvl >= 100) return;
+            if (unlockConditions[statKey]) { let req = unlockConditions[statKey]; if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) return; }
             let idx = skillCategories.find(c => c.id === catId).stats.indexOf(statKey);
             if (idx > 0 && upgrades[catId][skillCategories.find(c => c.id === catId).stats[idx - 1]] < 5) return;
-
-            let cost = detail.base;
-            if (metaCoins >= cost) { metaCoins -= cost; upgrades[catId][statKey]++; saveGame(); renderPopup(); }
+            let cost = detail.base; if (metaCoins >= cost) { metaCoins -= cost; upgrades[catId][statKey]++; saveGame(); renderPopup(); }
         }
 
         function buyHeroUpg(upgKey) {
-            let h = heroes.find(x => x.id === equippedHero); let lvl = h.upg[upgKey];
-            if (lvl >= 10) return;
-            let cost = (1500 + (lvl * 2000)) * 10;
-            if (metaCoins >= cost) { metaCoins -= cost; h.upg[upgKey]++; saveGame(); renderPopup(); }
+            let h = heroes.find(x => x.id === equippedHero); let lvl = h.upg[upgKey]; if (lvl >= 10) return;
+            let cost = (1500 + (lvl * 2000)) * 10; if (metaCoins >= cost) { metaCoins -= cost; h.upg[upgKey]++; saveGame(); renderPopup(); }
         }
 
         function renderPopup() {
-            updateUI();
-            const treeCon = document.getElementById('treeContainer'); treeCon.innerHTML = '';
+            updateUI(); const treeCon = document.getElementById('treeContainer'); treeCon.innerHTML = '';
             skillCategories.forEach(cat => {
                 let html = `<div class="skill-branch"><div class="skill-title" style="color:${cat.color}">${cat.id}</div><div class="skill-desc">${cat.desc}</div><div class="nodes-grid">`;
                 cat.stats.forEach((statKey, idx) => {
-                    let lvl = upgrades[cat.id][statKey]; let detail = statDetails[statKey]; let isMax = lvl >= 100;
-
-                    let isLocked = false;
-                    let lockReason = "";
-                    if (unlockConditions[statKey]) {
-                        let req = unlockConditions[statKey];
-                        if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) {
-                            isLocked = true;
-                            lockReason = `[${statDetails[req.reqStat].name} Lv.${req.reqLvl} 필요]`;
-                        }
-                    }
-                    if (idx > 0 && upgrades[cat.id][cat.stats[idx - 1]] < 5) {
-                        isLocked = true;
-                        if (!lockReason) lockReason = '이전 단계 Lv.5 필요';
-                    }
-
-                    let cost = detail.base;
-                    html += `<div class="node-wrapper">`;
+                    let lvl = upgrades[cat.id][statKey]; let detail = statDetails[statKey]; let isMax = lvl >= 100; let isLocked = false; let lockReason = "";
+                    if (unlockConditions[statKey]) { let req = unlockConditions[statKey]; if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) { isLocked = true; lockReason = `[${statDetails[req.reqStat].name} Lv.${req.reqLvl} 필요]`; } }
+                    if (idx > 0 && upgrades[cat.id][cat.stats[idx - 1]] < 5) { isLocked = true; if (!lockReason) lockReason = '이전 단계 Lv.5 필요'; }
+                    let cost = detail.base; html += `<div class="node-wrapper">`;
                     if (idx < cat.stats.length - 1) {
-                        let nextStat = cat.stats[idx + 1];
-                        let nextIsUnlocked = true;
-                        if (unlockConditions[nextStat]) {
-                            let req = unlockConditions[nextStat];
-                            if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) nextIsUnlocked = false;
-                        }
+                        let nextStat = cat.stats[idx + 1]; let nextIsUnlocked = true;
+                        if (unlockConditions[nextStat]) { let req = unlockConditions[nextStat]; if (upgrades[req.reqCat][req.reqStat] < req.reqLvl) nextIsUnlocked = false; }
                         if (upgrades[cat.id][cat.stats[idx]] < 5) nextIsUnlocked = false;
-
-                        let lineColor = nextIsUnlocked ? '#f1c40f' : '#555';
-                        let shadow = nextIsUnlocked ? `box-shadow: 0 0 8px ${lineColor};` : ''; let svgShadow = nextIsUnlocked ? `drop-shadow(0 0 8px ${lineColor})` : 'none';
+                        let lineColor = nextIsUnlocked ? '#f1c40f' : '#555'; let shadow = nextIsUnlocked ? `box-shadow: 0 0 8px ${lineColor};` : ''; let svgShadow = nextIsUnlocked ? `drop-shadow(0 0 8px ${lineColor})` : 'none';
                         if (idx === 0) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                         else if (idx === 1) html += `<svg style="position:absolute; top:50%; right:50%; width:100%; height:calc(100% + var(--grid-gap)); z-index:0; overflow:visible; pointer-events:none; filter:${svgShadow};"><line x1="100%" y1="0" x2="0" y2="100%" stroke="${lineColor}" stroke-width="4"/></svg>`;
                         else if (idx === 2) html += `<div style="position:absolute; top:50%; left:50%; width:100%; height:4px; background:${lineColor}; z-index:0; margin-top:-2px; ${shadow}"></div>`;
                     }
-                    html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')">
-                                                    <span>${detail.name}</span><div style="font-size:10px; color:#85c1e9; margin-top:2px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>
-                                                    ${!isMax ? `<div style="font-size:13px; font-weight:bold; color:#f1c40f; margin-top:3px;">💎 ${cost}</div>` : `<div style="font-size:13px; font-weight:bold; color:#2ecc71; margin-top:3px;">MAX</div>`}
-                                                    ${isLocked ? `<div style="font-size:10px; color:#e74c3c; margin-top:2px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}
-                                                </div></div>`;
-                });
-                html += `</div></div>`; treeCon.innerHTML += html;
+                    html += `   <div class="node ${isMax ? 'max' : ''} ${isLocked ? 'locked' : ''}" onclick="buyUpgrade('${cat.id}', '${statKey}')"><span>${detail.name}</span><div style="font-size:18px; color:#85c1e9; margin-top:8px;">[${detail.short}]</div><div class="lvl">${lvl}/100</div>${!isMax ? `<div style="font-size:22px; font-weight:bold; color:#f1c40f; margin-top:10px;">💎 ${cost}</div>` : `<div style="font-size:22px; font-weight:bold; color:#2ecc71; margin-top:10px;">MAX</div>`}${isLocked ? `<div style="font-size:16px; color:#e74c3c; margin-top:8px; line-height:1.2; word-break:keep-all;">${lockReason}</div>` : ''}</div></div>`;
+                }); html += `</div></div>`; treeCon.innerHTML += html;
             });
-
             let activeH = heroes.find(x => x.id === equippedHero);
             let heroContainer = document.getElementById('heroContainer');
-            heroContainer.innerHTML = `
-                                <h2>[ ${activeH.name} ] 전용 비전 연마</h2>
-                                <div class="hero-live2d-box" style="border-color:${activeH.color};">
-                                    <div class="hero-spine-text">[ Spine Live 2D Area ]</div>
-                                    <div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div>
-                                </div>
-                                <div class="hero-desc-box">${activeH.desc}</div>
-                                <div class="hero-upgrades" id="popupHeroUpgrades"></div>
-                            `;
-
-            let upgsHtml = "";
-            let upgTypes = [
-                { key: 'cd', name: activeH.upgDesc.cd, desc: '강림 재사용 대기시간 단축' },
-                { key: 'effect', name: activeH.upgDesc.effect, desc: '강림 타격 및 부가효과 증폭' }
-            ];
-
-            upgTypes.forEach(u => {
-                let clvl = activeH.upg[u.key];
-                let cost = (1500 + (clvl * 2000)) * 10;
-                let isMax = clvl >= 10;
-                let btnDisable = isMax || metaCoins < cost ? 'disabled' : '';
-                upgsHtml += `
-                                    <button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')">
-                                        <div class="hero-upg-circle">Lv.${clvl}</div>
-                                        <div class="hero-upg-info">
-                                            <div class="hero-upg-name">${u.name}</div>
-                                            <div class="hero-upg-desc">${u.desc}</div>
-                                        </div>
-                                        <div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div>
-                                    </button>`;
-            });
+            heroContainer.innerHTML = `<h2>[ ${activeH.name} ] 전용 비전 연마</h2><div class="hero-live2d-box" style="border-color:${activeH.color};"><div class="hero-spine-text">[ Spine Live 2D Area ]</div><div class="hero-name-big" style="color:${activeH.color};">${activeH.name}</div></div><div class="hero-desc-box">${activeH.desc}</div><div class="hero-upgrades" id="popupHeroUpgrades"></div>`;
+            let upgsHtml = ""; let upgTypes = [{ key: 'cd', name: activeH.upgDesc.cd, desc: '강림 재사용 대기시간 단축' }, { key: 'effect', name: activeH.upgDesc.effect, desc: '강림 타격 및 부가효과 증폭' }];
+            upgTypes.forEach(u => { let clvl = activeH.upg[u.key]; let cost = (1500 + (clvl * 2000)) * 10; let isMax = clvl >= 10; let btnDisable = isMax || metaCoins < cost ? 'disabled' : ''; upgsHtml += `<button class="hero-upg-btn" ${btnDisable} onclick="buyHeroUpg('${u.key}')"><div class="hero-upg-circle">Lv.${clvl}</div><div class="hero-upg-info"><div class="hero-upg-name">${u.name}</div><div class="hero-upg-desc">${u.desc}</div></div><div class="hero-upg-cost">${isMax ? '<span style="color:#2ecc71">MAX</span>' : `💎 ${cost}`}</div></button>`; });
             document.getElementById('popupHeroUpgrades').innerHTML = upgsHtml;
         }
 
         function getBase(key, baseVal) {
-            let catId = getCategoryForKey(key); if (!catId) return baseVal;
-            let lvl = upgrades[catId][key]; if (!lvl) return baseVal;
-
+            let catId = getCategoryForKey(key); if (!catId) return baseVal; let lvl = upgrades[catId][key]; if (!lvl) return baseVal;
             if (key === 'atkMelee' || key === 'atkRanged') return (baseVal + (lvl * 0.5)) * (1 + mercBuffAtk);
             if (key === 'atkSpeed') return (lvl * 0.005) + mercBuffSpd;
             if (key === 'lifesteal') return (lvl * 0.01);
-
             if (key === 'hp') return baseVal + (lvl * 3);
             if (key === 'def') return lvl * 0.3;
             if (key === 'critRate') return 0.2 + (lvl * 0.005);
@@ -1716,28 +1524,13 @@
             return baseVal;
         }
 
-        function getActualCost(charData) {
-            let discount = getBase('costReduc', 0);
-            let wavePenalty = Math.pow(1.22, currentWave);
-            return Math.max(10, Math.floor(charData.cost * (1 - discount) * wavePenalty));
-        }
-
-        function drawText(text, x, y, size, color = "white", align = "center") {
-            ctx.save(); ctx.fillStyle = color; ctx.font = `bold ${size}px 'Malgun Gothic', sans-serif`; ctx.textAlign = align; ctx.textBaseline = "middle";
-            ctx.strokeStyle = "rgba(0,0,0,0.9)"; ctx.lineWidth = size >= 30 ? 6 : 4; ctx.strokeText(text, Math.round(x), Math.round(y)); ctx.fillText(text, Math.round(x), Math.round(y)); ctx.restore();
-        }
-
-        function createFloatingText(x, y, text, color, isCrit) { floatingTexts.push({ x: x, y: y, text: text, color: color, life: 20, maxLife: 20, size: isCrit ? 44 : 28, isCrit: isCrit }); }
+        function getActualCost(charData) { let discount = getBase('costReduc', 0); let wavePenalty = Math.pow(1.22, currentWave); return Math.max(10, Math.floor(charData.cost * (1 - discount) * wavePenalty)); }
+        function drawText(text, x, y, size, color = "white", align = "center") { ctx.save(); ctx.fillStyle = color; ctx.font = `bold ${size}px 'Malgun Gothic', sans-serif`; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.strokeStyle = "rgba(0,0,0,0.9)"; ctx.lineWidth = size >= 30 ? 6 : 4; ctx.strokeText(text, Math.round(x), Math.round(y)); ctx.fillText(text, Math.round(x), Math.round(y)); ctx.restore(); }
+        function createFloatingText(x, y, text, color, isCrit) { floatingTexts.push({ x: x, y: y, text: text, color: color, life: 25, maxLife: 25, size: isCrit ? 55 : 36, isCrit: isCrit }); }
 
         function triggerHeroSkill(heroId, targetLaneId) {
-            let activeHeroData = heroes.find(h => h.id === heroId);
-            let eff = 1 + (activeHeroData.upg.effect * 0.2);
-            let cdReduc = activeHeroData.upg.cd * 0.05;
-
-            heroSlot.activeTimer = Math.floor(166 * eff);
-            heroSlot.cd = Math.floor(heroSlot.maxCd * (1 - cdReduc));
-            shakeFrames = 16;
-
+            let activeHeroData = heroes.find(h => h.id === heroId); let eff = 1 + (activeHeroData.upg.effect * 0.2); let cdReduc = activeHeroData.upg.cd * 0.05;
+            heroSlot.activeTimer = Math.floor(166 * eff); heroSlot.cd = Math.floor(heroSlot.maxCd * (1 - cdReduc)); shakeFrames = 16;
             if (heroId === 'h0') { timeStopFrames = Math.floor(166 * eff); h0BuffTimer = Math.floor(300 * eff); createFloatingText(W / 2, H / 2, "아군 공속 2배!", activeHeroData.color, true); }
             else if (heroId === 'h1') { timeStopFrames = Math.floor(166 * eff); enemies.forEach(e => { e.kbTimer = Math.floor(45 * eff); e.kbSpeed = 150 / 45; }); fieldSlots.forEach(fs => { if (fs.char) { let healAmt = Math.floor(getBase('hp', fs.char.maxHp) * 0.4); fs.char.hp = Math.min(getBase('hp', fs.char.maxHp), fs.char.hp + healAmt); createFloatingText(fs.x, fs.y - 30, `+${healAmt}`, "lime", true); } }); }
             else if (heroId === 'h2') { invincibleFrames = Math.floor(166 * eff); laneEffect = { laneId: targetLaneId, timer: Math.floor(75 * eff) }; enemies.forEach(en => { if (en.lane.id === targetLaneId) { if (en.type === 'boss' || en.type === 'midboss') { let dmg = Math.floor(en.hp * Math.min(1, 0.3 * eff)); en.hp -= dmg; createFloatingText(en.x, en.y - 80, `-${dmg}`, activeHeroData.color, true); } else { en.hp = 0; createFloatingText(en.x, en.y - 80, `절명!`, activeHeroData.color, true); } } }); }
@@ -1749,317 +1542,155 @@
             document.getElementById('mercGaugeFill').style.width = `${glitchGauge}%`;
             let btn = document.getElementById('mercBtn');
             if (mercState === 'charging') {
-                if (glitchGauge >= 100) {
+                if (glitchGauge >= 100 && currentWave < 9) {
                     mercState = 'ready'; btn.innerHTML = "가동"; btn.classList.add('ready'); btn.style.background = "";
-                } else {
-                    if (currentWave === 9) btn.innerHTML = "봉인됨"; else btn.innerHTML = "충전중";
-                    btn.classList.remove('ready'); btn.style.background = ""; document.getElementById('mercTraitInfo').style.display = 'none';
+                    // [v13.10] Auto-cast 추가
+                    setTimeout(() => activateMercenary(), 50);
                 }
+                else { if (currentWave === 9) btn.innerHTML = "봉인됨"; else btn.innerHTML = "충전중"; btn.classList.remove('ready'); btn.style.background = ""; document.getElementById('mercTraitInfo').style.display = 'none'; }
             }
         }
 
         function renderBuffIcons() {
             let container = document.getElementById('buffListUI'); container.innerHTML = '';
             activeBuffsLog.forEach(b => {
-                let icon = document.createElement('div');
-                icon.className = 'buff-icon';
-                icon.style.borderColor = b.isAtk ? '#e74c3c' : '#3498db';
-                icon.style.background = b.isAtk ? 'rgba(192, 57, 43, 0.85)' : 'rgba(41, 128, 185, 0.85)';
-                icon.innerHTML = `<span style="font-size:22px;">${b.icon}</span><span style="font-size:14px; color:#f1c40f;">${b.val}%</span>`;
-                container.appendChild(icon);
+                let icon = document.createElement('div'); icon.className = 'buff-icon'; icon.style.borderColor = b.isAtk ? '#e74c3c' : '#3498db'; icon.style.background = b.isAtk ? 'rgba(192, 57, 43, 0.85)' : 'rgba(41, 128, 185, 0.85)'; icon.innerHTML = `<span style="font-size:32px;">${b.icon}</span><span style="font-size:18px; color:#f1c40f;">${b.val}%</span>`; container.appendChild(icon);
             });
         }
 
         function activateMercenary() {
             if (gameState !== 'playing') return;
-
             let btn = document.getElementById('mercBtn');
 
-            // [1단계] 게이지가 꽉 차서 '가동' 가능 상태일 때 (슬롯 돌리기 시작)
             if (mercState === 'ready') {
-                mercState = 'spinning';
-                glitchGauge = 0;
-                updateMercUI();
+                mercState = 'spinning'; glitchGauge = 0; updateMercUI(); btn.innerHTML = "모집중"; btn.classList.remove('ready'); mercSpinFrames = 180;
+                let rands = [Math.random(), Math.random(), Math.random(), Math.random()]; let tier = 1; let isAllSame = false; mercRewardType = Math.random() < 0.25 ? 'buff' : 'merc';
+                if (mercRewardType === 'buff') {
+                    if (rands[0] < 0.05) tier = 4; else if (rands[0] < 0.20) tier = 3; else if (rands[0] < 0.50) tier = 2;
+                    let targetIcon = tier === 4 ? 3 : (tier === 3 ? 2 : (tier === 2 ? 1 : 0)); mercFinalIcons = [targetIcon, targetIcon, targetIcon, targetIcon];
+                } else {
+                    if (rands[0] < 0.02) { tier = 4; isAllSame = true; } else if (rands[0] < 0.12) { tier = 3; isAllSame = true; } else if (rands[0] < 0.35) { tier = 2; isAllSame = true; }
+                    if (isAllSame) { let targetIcon = tier === 4 ? 3 : (tier === 3 ? 2 : (tier === 2 ? 1 : 0)); mercFinalIcons = [targetIcon, targetIcon, targetIcon, targetIcon]; }
+                    else { mercFinalIcons = [Math.floor(Math.random() * 4), Math.floor(Math.random() * 4), Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)]; if (mercFinalIcons[0] === mercFinalIcons[1] && mercFinalIcons[1] === mercFinalIcons[2] && mercFinalIcons[2] === mercFinalIcons[3]) { mercFinalIcons[3] = (mercFinalIcons[3] + 1) % 4; } }
+                }
+                mercFinalTier = tier;
 
-                btn.innerHTML = "모집중";
-                btn.classList.remove('ready');
-                document.getElementById('mercTraitInfo').style.display = 'none';
-
-                mercSpinFrames = 180; // 약 3초간 회전 연출
-
-                let rand = Math.random();
-                let rands = [];
-                mercRewardType = Math.random() < 0.30 ? 'buff' : 'merc'; // 30% 확률로 영구 버프, 70% 확률로 용병 유닛
-                mercFinalTier = 0;
-
-                // 결과 티어 결정 (확률 로직)
-                if (rand < 0.50) { rands = [0, 1, 2, 3]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 1; }
-                else if (rand < 0.80) { rands = [0, 0, 1, 2]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 2; }
-                else if (rand < 0.95) { rands = [0, 0, 0, 1]; rands.sort(() => Math.random() - 0.5); mercFinalTier = 3; }
-                else { rands = [0, 0, 0, 0]; mercFinalTier = 4; }
-
-                let iconOffset = Math.floor(Math.random() * 4);
-                mercFinalIcons = [
-                    (rands[0] + iconOffset) % 4,
-                    (rands[1] + iconOffset) % 4,
-                    (rands[2] + iconOffset) % 4,
-                    (rands[3] + iconOffset) % 4
-                ];
-            }
-
-            // [2단계] 슬롯이 멈추고 결과가 나왔을 때 (클릭 시 보상 수령)
-            else if (mercState === 'rewarded') {
+            } else if (mercState === 'rewarded') {
                 if (pendingMerc) {
-                    // A. 결과가 '버프'인 경우: 즉시 적용 후 다시 충전 상태로
                     if (pendingMerc.type === 'buff') {
-                        if (pendingMerc.buffType === 'atk') mercBuffAtk += pendingMerc.value;
-                        else mercBuffSpd += pendingMerc.value;
-
-                        activeBuffsLog.push({
-                            isAtk: pendingMerc.buffType === 'atk',
-                            icon: pendingMerc.buffType === 'atk' ? '⚔️' : '💨',
-                            val: Math.round(pendingMerc.value * 100)
-                        });
-
-                        renderBuffIcons();
-                        createFloatingText(W / 2, H / 2, pendingMerc.name, "#f1c40f", true);
-                        shakeFrames = 5;
-
-                        pendingMerc = null;
-                        mercState = 'charging';
-                        updateMercUI();
-                    }
-                    // B. 결과가 '용병'인 경우: 배치 모드로 진입하고 버튼 딤드 처리
-                    else {
-                        selectedInvenIdx = 'merc'; // 배치 대상 모드를 '용병'으로 설정
-                        btn.classList.add('dimmed'); // 버튼을 어둡게 만들어 선택됨을 표시
-                        createFloatingText(W / 2, H / 2 + 100, "배치할 위치를 선택하시오!", "#0abde3", false);
+                        if (pendingMerc.buffType === 'atk') mercBuffAtk += pendingMerc.value; else mercBuffSpd += pendingMerc.value;
+                        activeBuffsLog.push({ isAtk: pendingMerc.buffType === 'atk', icon: pendingMerc.buffType === 'atk' ? '⚔️' : '💨', val: Math.round(pendingMerc.value * 100) });
+                        renderBuffIcons(); createFloatingText(W / 2, H / 2, pendingMerc.name, "#f1c40f", true);
+                        pendingMerc = null; mercState = 'charging'; updateMercUI(); btn.style.backgroundImage = "none";
+                    } else {
+                        selectedInvenIdx = 'merc'; btn.classList.add('dimmed'); createFloatingText(W / 2, H / 2 + 100, "배치할 위치를 선택하시오!", "#0abde3", false);
                     }
                 }
             }
         }
 
-        // [비급] 좌측 밀착 상태에서도 1:1로 대응되는 터치 좌표 역산 함수
         function updateMousePos(clientX, clientY) {
-            const container = document.getElementById('gameContainer');
-            const rect = container.getBoundingClientRect();
-            const winW = window.innerWidth;
-            const winH = window.innerHeight;
-
-            const isPortrait = winH > winW;
-            // 렌더링된 실제 크기 대비 원본(1920) 비율 계산
-            const currentScale = isPortrait ? rect.height / 1920 : rect.width / 1920;
-
-            if (isPortrait) {
-                // 세로 모드(90도 회전) 역산
-                mouseX = (clientY - rect.top) / currentScale;
-                mouseY = (rect.right - clientX) / currentScale;
-            } else {
-                // 가로 모드 역산 (왼쪽 끝 rect.left 가 0에 수렴함)
-                mouseX = (clientX - rect.left) / currentScale;
-                mouseY = (clientY - rect.top) / currentScale;
-            }
+            const container = document.getElementById('gameContainer'); const rect = container.getBoundingClientRect(); const winW = window.innerWidth; const winH = window.innerHeight;
+            const isPortrait = winH > winW; const currentScale = isPortrait ? rect.height / 1920 : rect.width / 1920;
+            if (isPortrait) { mouseX = (clientY - rect.top) / currentScale; mouseY = (rect.right - clientX) / currentScale; } else { mouseX = (clientX - rect.left) / currentScale; mouseY = (clientY - rect.top) / currentScale; }
         }
 
         function handleInteract(e) {
-            if (e && e.target !== canvas) return;
-
-            // [1] 게임 오버 상태일 때: 타이틀로 귀환 처리
-            if (gameState === 'gameover') {
-                if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 90 && mouseY <= H / 2 + 180) {
-                    showScreen('titleScreen');
-                }
-                return;
-            }
-
+            if (gameState === 'gameover') { if (mouseX >= W / 2 - 180 && mouseX <= W / 2 + 180 && mouseY >= H / 2 + 90 && mouseY <= H / 2 + 180) { showScreen('titleScreen'); } return; }
             if (gameState !== 'playing') return;
 
-            // [2] 히어로 스킬 타겟팅 모드일 때: 라인 선택 처리
-            if (isHeroTargeting) {
-                let clickedLaneId = -1;
-                for (let r = 0; r < rows; r++) {
-                    if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { clickedLaneId = r; break; }
-                }
-                if (clickedLaneId !== -1) triggerHeroSkill('h2', clickedLaneId);
-                isHeroTargeting = false;
-                return;
-            }
+            if (isHeroTargeting) { let clickedLaneId = -1; for (let r = 0; r < rows; r++) { if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { clickedLaneId = r; break; } } if (clickedLaneId !== -1) triggerHeroSkill('h2', clickedLaneId); isHeroTargeting = false; return; }
 
-            // [3] 하단 UI 영역 (인벤토리 및 히어로 슬롯) 클릭 처리
             if (mouseY > 880) {
-                const slotWidth = 155; // 확장된 너비 적용
-                const deckStartX = 350; // 중앙 정렬 해제 및 좌측 배치
-                const slotY = 900; // 변경된 높이 적용
-
+                const slotWidth = 150; const deckStartX = 280; const slotY = 890;
                 for (let i = 0; i < deck.length; i++) {
-                    const bx = deckStartX + (i * slotWidth);
-                    if (mouseX >= bx && mouseX <= bx + slotWidth && mouseY >= slotY && mouseY <= slotY + 160) {
+                    const bx = deckStartX + (i * (slotWidth + 8));
+                    if (mouseX >= bx && mouseX <= bx + slotWidth && mouseY >= slotY && mouseY <= slotY + 180) {
                         document.getElementById('mercBtn').classList.remove('dimmed');
-                        if (deck[i].state === 'ready') {
-                            selectedInvenIdx = (selectedInvenIdx === i) ? -1 : i;
-                        }
-                        return;
+                        if (deck[i].state === 'ready') { selectedInvenIdx = (selectedInvenIdx === i) ? -1 : i; } return;
                     }
                 }
-
-                // 히어로 슬롯 클릭 시
                 if (mouseX >= heroSlot.x && mouseX <= heroSlot.x + heroSlot.w && mouseY >= heroSlot.y && mouseY <= heroSlot.y + heroSlot.h) {
-                    if (heroSlot.cd <= 0 && heroSlot.activeTimer <= 0) {
-                        let activeHeroData = heroes.find(h => h.id === equippedHero);
-                        if (activeHeroData.id === 'h2') isHeroTargeting = true;
-                        else triggerHeroSkill(activeHeroData.id, null);
-                    }
-                    return;
+                    document.getElementById('mercBtn').classList.remove('dimmed');
+                    if (heroSlot.cd <= 0 && heroSlot.activeTimer <= 0) { let activeHeroData = heroes.find(h => h.id === equippedHero); if (activeHeroData.id === 'h2') isHeroTargeting = true; else triggerHeroSkill(activeHeroData.id, null); } return;
                 }
                 return;
             }
 
-            // [4] 전장 필드 슬롯 클릭 처리 (배치 및 회수)
             for (let i = 0; i < fieldSlots.length; i++) {
                 const s = fieldSlots[i];
                 if (Math.hypot(mouseX - s.x, mouseY - s.y) < 60) {
-
-                    // A. 이미 유닛이 있는 경우: 유닛 회수 (철수)
                     if (s.char) {
-                        if (s.char.id === 999) return; // 특수 유닛 회수 불가
-                        s.char.state = 'waiting';
-                        s.char.timer = 125; // 재배치 대기시간
-                        s.char.showRangeTimer = 0;
-                        s.char.strikeAnim = 0;
-                        s.char.jumpAnim = 0;
-                        s.char.pendingStrike = null;
-                        s.char = null; // 슬롯 비우기
-                        selectedInvenIdx = -1;
-                    }
-
-                    // B. 유닛 배치를 시도하는 경우 (선택된 인덱스가 있을 때)
-                    else if (selectedInvenIdx !== -1) {
-                        // 설치 불가 지역 체크
-                        if (s.zone === 'unbuildable') {
-                            createFloatingText(s.x, s.y, "배치 불가 지역!", "#e74c3c", false);
-                            selectedInvenIdx = -1;
-                            document.getElementById('mercBtn').classList.remove('dimmed');
-                            return;
-                        }
-
-                        // [B-1] 용병 유닛 배치
+                        document.getElementById('mercBtn').classList.remove('dimmed');
+                        if (s.char.id === 999) return; s.char.state = 'waiting'; s.char.timer = 125; s.char.showRangeTimer = 0; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.pendingStrike = null; s.char = null; selectedInvenIdx = -1;
+                    } else if (selectedInvenIdx !== -1) {
+                        if (s.zone === 'unbuildable') { document.getElementById('mercBtn').classList.remove('dimmed'); createFloatingText(s.x, s.y, "배치 불가 지역!", "#e74c3c", false); selectedInvenIdx = -1; return; }
                         if (selectedInvenIdx === 'merc') {
                             s.char = JSON.parse(JSON.stringify(pendingMerc));
-                            s.char.state = 'deployed';
-                            s.char.cd = 0;
-                            s.char.showRangeTimer = 75;
-                            s.char.strikeAnim = 0;
-                            s.char.jumpAnim = 0;
-                            s.char.hp = getBase('hp', s.char.maxHp);
-
-                            selectedInvenIdx = -1;
-                            mercState = 'charging'; // 충전 모드로 복귀
-
-                            // 핵심: 용병 버튼 딤드 해제 및 UI 갱신
+                            s.char.state = 'deployed'; s.char.cd = 0; s.char.showRangeTimer = 75; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.hp = getBase('hp', s.char.maxHp); s.char.facingDir = 1;
+                            selectedInvenIdx = -1; mercState = 'charging';
                             const mBtn = document.getElementById('mercBtn');
-                            if (mBtn) mBtn.classList.remove('dimmed');
+                            if (mBtn) { mBtn.classList.remove('dimmed'); mBtn.style.pointerEvents = "auto"; mBtn.style.filter = "none"; mBtn.style.backgroundImage = "none"; }
                             updateMercUI();
+                        } else {
+                            let c = deck[selectedInvenIdx]; let finalCost = getActualCost(c);
+                            if (battleCoins >= finalCost) { battleCoins -= finalCost; updateUI(); s.char = c; s.char.state = 'deployed'; s.char.cd = 0; s.char.showRangeTimer = 75; s.char.strikeAnim = 0; s.char.jumpAnim = 0; s.char.hp = getBase('hp', c.maxHp); s.char.facingDir = 1; selectedInvenIdx = -1; }
+                            else { createFloatingText(s.x, s.y, "전투 코인 부족!", "#e74c3c", false); }
                         }
-
-                        // [B-2] 일반 유닛 배치
-                        else {
-                            let c = deck[selectedInvenIdx];
-                            let finalCost = getActualCost(c);
-
-                            if (battleCoins >= finalCost) {
-                                battleCoins -= finalCost;
-                                updateUI();
-                                s.char = c;
-                                s.char.state = 'deployed';
-                                s.char.cd = 0;
-                                s.char.showRangeTimer = 75;
-                                s.char.strikeAnim = 0;
-                                s.char.jumpAnim = 0;
-                                s.char.hp = getBase('hp', c.maxHp);
-                                selectedInvenIdx = -1;
-                            } else {
-                                createFloatingText(s.x, s.y, "전투 코인 부족!", "#e74c3c", false);
-                            }
-                        }
-                    }
-                    return;
+                    } return;
                 }
             }
+            document.getElementById('mercBtn').classList.remove('dimmed');
+            selectedInvenIdx = -1;
         }
 
-        canvas.addEventListener('mousemove', (e) => updateMousePos(e.clientX, e.clientY));
-        canvas.addEventListener('mousedown', (e) => { updateMousePos(e.clientX, e.clientY); handleInteract(e); });
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); handleInteract(e); }, { passive: false });
+        const container = document.getElementById('gameContainer');
+        container.addEventListener('mousemove', (e) => updateMousePos(e.clientX, e.clientY));
+        container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button') || e.target.closest('.hud-panel') || e.target.closest('#mercenaryUI') || e.target.closest('.node') || e.target.closest('.popup-body')) return;
+            updateMousePos(e.clientX, e.clientY); handleInteract(e);
+        });
+        container.addEventListener('touchmove', (e) => {
+            if (!e.target.closest('.popup-body')) e.preventDefault();
+            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        container.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.popup-body')) e.preventDefault();
+            if (e.target.closest('button') || e.target.closest('.hud-panel') || e.target.closest('#mercenaryUI') || e.target.closest('.node') || e.target.closest('.popup-body')) return;
+            if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY); handleInteract(e);
+        }, { passive: false });
 
         const fpsInterval = 1000 / 60; let then = performance.now();
 
         function showVictoryPopup() {
-            gameState = 'paused';
-            document.getElementById('victoryOverlay').style.display = 'flex';
-            document.getElementById('victoryTitle').innerText = `🏆 제 ${currentStage} 관문 돌파 성공! 🏆`;
-
-            let stageFixedReward = currentStage * 300;
-            let coinBonusMeta = Math.floor(battleCoins * 0.20);
-            let totalReward = stageFixedReward + coinBonusMeta;
-
-            metaCoins += totalReward;
-            updateUI();
-
-            document.getElementById('victoryRewardText').innerHTML =
-                `관문 돌파 기본 보상: <span style="color:#00d2d3;">${stageFixedReward} 💎</span><br>` +
-                `잔여 전투 코인(<span style="color:white;">${battleCoins}</span>)의 20% 보너스: <span style="color:#00d2d3;">${coinBonusMeta} 💎</span><br>` +
-                `<br><span style="font-size:32px; color:#f1c40f; font-weight:bold; text-shadow: 0 0 10px rgba(241,196,15,0.5);">총 획득 천기 영석: ${totalReward} 개!</span>`;
+            gameState = 'paused'; document.getElementById('victoryOverlay').style.display = 'flex'; document.getElementById('victoryTitle').innerText = `🏆 제 ${currentStage} 관문 돌파 성공! 🏆`;
+            let stageFixedReward = currentStage * 300; let coinBonusMeta = Math.floor(battleCoins * 0.20); let totalReward = stageFixedReward + coinBonusMeta; metaCoins += totalReward; updateUI();
+            document.getElementById('victoryRewardText').innerHTML = `관문 돌파 기본 보상: <span style="color:#00d2d3;">${stageFixedReward} 💎</span><br>잔여 전투 코인(<span style="color:white;">${battleCoins}</span>)의 20% 보너스: <span style="color:#00d2d3;">${coinBonusMeta} 💎</span><br><br><span style="font-size:36px; color:#f1c40f; font-weight:bold; text-shadow: 0 0 10px rgba(241,196,15,0.5);">총 획득 천기 영석: ${totalReward} 개!</span>`;
         }
 
         function goToNextStage() { document.getElementById('victoryOverlay').style.display = 'none'; startBattle(currentStage); }
         function goToLobby() { document.getElementById('victoryOverlay').style.display = 'none'; showScreen('heroSelectScreen'); }
-
-        function applyLifesteal(char, dmg) {
-            if (!char || char.id === 999 || char.hp <= 0) return;
-            let lsRate = getBase('lifesteal', 0);
-            if (lsRate > 0) {
-                let healAmt = dmg * lsRate;
-                char.hp = Math.min(getBase('hp', char.maxHp), char.hp + healAmt);
-                createFloatingText(char.x, char.y - 30, `+${Math.floor(healAmt)}`, "lime", false);
-            }
-        }
+        function applyLifesteal(char, dmg) { if (!char || char.id === 999 || char.hp <= 0) return; let lsRate = getBase('lifesteal', 0); if (lsRate > 0) { let healAmt = dmg * lsRate; char.hp = Math.min(getBase('hp', char.maxHp), char.hp + healAmt); createFloatingText(char.x, char.y - 30, `+${Math.floor(healAmt)}`, "lime", false); } }
 
         function gameLoop(timestamp) {
             requestAnimationFrame(gameLoop);
             if (gameState !== 'playing' && gameState !== 'gameover' && gameState !== 'paused') return;
 
             let now = timestamp || performance.now(); let elapsed = now - then;
-
             if (elapsed > fpsInterval) {
-                then = now - (elapsed % fpsInterval);
-
-                let loops = isSpeedUp ? 2 : 1;
+                then = now - (elapsed % fpsInterval); let loops = isSpeedUp ? 2 : 1;
                 for (let loopIdx = 0; loopIdx < loops; loopIdx++) {
                     if (gameState === 'paused') break;
-
                     if (baseEnergy <= 0 && gameState !== 'gameover') {
-                        gameState = 'gameover';
-
-                        let bonusMeta = Math.floor(battleCoins * 0.1);
-                        metaCoins += bonusMeta;
-                        saveGame();
-                        togglePopup(false);
-
-                        document.querySelector('.top-ui-wrapper').style.display = 'none';
-                        document.querySelector('.hud-panel').style.display = 'none';
-                        document.getElementById('wavePassBtn').style.display = 'none';
-                        document.getElementById('speedUpBtn').style.display = 'none';
-                        document.getElementById('midBossUI').style.display = 'none';
+                        gameState = 'gameover'; let bonusMeta = Math.floor(battleCoins * 0.1); metaCoins += bonusMeta; saveGame(); togglePopup(false);
+                        document.querySelector('.top-ui-wrapper').style.display = 'none'; document.querySelector('.hud-panel').style.display = 'none'; document.getElementById('wavePassBtn').style.display = 'none'; document.getElementById('speedUpBtn').style.display = 'none'; document.getElementById('midBossUI').style.display = 'none';
                         break;
                     }
 
                     ctx.clearRect(0, 0, W, H); ctx.save();
-
                     if (gameState === 'playing' || gameState === 'paused') {
                         if (shakeFrames > 0) { ctx.translate((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20); shakeFrames--; }
-                        ctx.fillStyle = timeStopFrames > 0 || heroSlot.activeTimer > 0 ? "#1e272e" : "#e8e6d9"; ctx.fillRect(0, 0, W, H);
-
+                        if (timeStopFrames > 0 || heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(30, 39, 46, 0.7)"; ctx.fillRect(0, 0, W, H); }
                         ctx.strokeStyle = "#ff4757"; ctx.lineWidth = 4; ctx.setLineDash([10, 10]);
                         ctx.beginPath(); ctx.moveTo(startX - 30, 150); ctx.lineTo(startX - 30 + (rows - 1) * skewX, 900); ctx.stroke(); ctx.setLineDash([]);
                     }
@@ -2070,14 +1701,13 @@
                         if (currentWave === 9) {
                             document.getElementById('mercGaugeFill').style.filter = "grayscale(100%) brightness(50%)";
                             let btn = document.getElementById('mercBtn');
-                            if (mercState === 'charging') {
-                                btn.style.filter = "grayscale(100%) brightness(50%)"; btn.style.pointerEvents = "none";
-                                if (btn.innerHTML !== "봉인됨") btn.innerHTML = "봉인됨";
-                            } else { btn.style.filter = "none"; btn.style.pointerEvents = "auto"; }
+                            if (mercState === 'charging') { btn.style.filter = "grayscale(100%) brightness(50%)"; btn.style.pointerEvents = "none"; if (btn.innerHTML !== "봉인됨") btn.innerHTML = "봉인됨"; }
+                            else { btn.style.filter = "none"; btn.style.pointerEvents = "auto"; }
                         } else {
                             document.getElementById('mercGaugeFill').style.filter = "none";
                             let btn = document.getElementById('mercBtn');
-                         
+                            btn.style.filter = "none"; btn.style.pointerEvents = "auto";
+                            if (mercState === 'charging' && btn.innerHTML === "봉인됨") btn.innerHTML = "충전중";
                         }
 
                         let wavePassBtn = document.getElementById('wavePassBtn');
@@ -2085,232 +1715,71 @@
                             let elapsedTime = waveDurations[currentWave] - waveTimer;
                             if (elapsedTime >= 1200) {
                                 if (!wavePassBtn.classList.contains('active')) {
-                                    wavePassBtn.classList.add('active');
-                                    wavePassBtn.innerHTML = `웨이브<br>패스<br><span style="font-size:12px;color:gold">${wavePassCost}💰</span>`;
-                                    wavePassBtn.style.pointerEvents = 'auto';
-                                    wavePassBtn.onclick = () => {
-                                        if (battleCoins >= wavePassCost) {
-                                            battleCoins -= wavePassCost;
-                                            wavePassCost += 1000;
-                                            updateUI();
-                                            waveTimer = 0;
-                                            wavePassBtn.classList.remove('active');
-                                        } else {
-                                            createFloatingText(W / 2, H / 2 + 100, "전투 코인 부족!", "#e74c3c", false);
-                                        }
-                                    };
-                                } else {
-                                    wavePassBtn.innerHTML = `웨이브<br>패스<br><span style="font-size:12px;color:gold">${wavePassCost}💰</span>`;
-                                }
-                            } else {
-                                wavePassBtn.classList.remove('active'); wavePassBtn.innerHTML = "웨이브 패스"; wavePassBtn.style.pointerEvents = 'none'; wavePassBtn.onclick = null;
-                            }
-                        } else {
-                            wavePassBtn.classList.remove('active'); wavePassBtn.innerHTML = "웨이브 패스"; wavePassBtn.style.pointerEvents = 'none'; wavePassBtn.onclick = null;
-                        }
+                                    wavePassBtn.classList.add('active'); wavePassBtn.innerHTML = `웨이브<br>패스<br><span style="font-size:16px;color:gold">${wavePassCost}💰</span>`; wavePassBtn.style.pointerEvents = 'auto';
+                                    wavePassBtn.onclick = () => { if (battleCoins >= wavePassCost) { battleCoins -= wavePassCost; wavePassCost += 1000; updateUI(); waveTimer = 0; wavePassBtn.classList.remove('active'); } else { createFloatingText(W / 2, H / 2 + 100, "전투 코인 부족!", "#e74c3c", false); } };
+                                } else { wavePassBtn.innerHTML = `웨이브<br>패스<br><span style="font-size:16px;color:gold">${wavePassCost}💰</span>`; }
+                            } else { wavePassBtn.classList.remove('active'); wavePassBtn.innerHTML = "웨이브 패스"; wavePassBtn.style.pointerEvents = 'none'; wavePassBtn.onclick = null; }
+                        } else { wavePassBtn.classList.remove('active'); wavePassBtn.innerHTML = "웨이브 패스"; wavePassBtn.style.pointerEvents = 'none'; wavePassBtn.onclick = null; }
 
-                        if (isHeroTargeting) {
-                            let hoverLaneId = -1;
-                            for (let r = 0; r < rows; r++) { if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { hoverLaneId = r; break; } }
-                            ctx.fillStyle = "rgba(230, 126, 34, 0.2)"; ctx.fillRect(0, 0, W, H); drawText("터치하여 심판할 라인을 선택하시오!", W / 2, 120, 44, "#e67e22");
-                            if (hoverLaneId !== -1) { let lane = lanes[hoverLaneId]; ctx.fillStyle = "rgba(230, 126, 34, 0.5)"; ctx.fillRect(0, lane.y - 40, W, 80); }
-                        }
+                        if (isHeroTargeting) { let hoverLaneId = -1; for (let r = 0; r < rows; r++) { if (Math.abs(mouseY - lanes[r].y) < rowHeight / 2) { hoverLaneId = r; break; } } ctx.fillStyle = "rgba(230, 126, 34, 0.2)"; ctx.fillRect(0, 0, W, H); drawText("터치하여 심판할 라인을 선택하시오!", W / 2, 120, 50, "#e67e22"); if (hoverLaneId !== -1) { let lane = lanes[hoverLaneId]; ctx.fillStyle = "rgba(230, 126, 34, 0.5)"; ctx.fillRect(0, lane.y - 40, W, 80); } }
                         if (laneEffect.timer > 0) { let lane = lanes[laneEffect.laneId]; ctx.fillStyle = "rgba(230, 126, 34, " + (laneEffect.timer / 75 * 0.5) + ")"; ctx.fillRect(0, lane.y - 40, W, 80); laneEffect.timer--; }
 
                         lanes.forEach(lane => {
-                            ctx.strokeStyle = timeStopFrames > 0 ? "rgba(255,255,255,0.05)" : lane.color; ctx.lineWidth = 60 * lane.scale; ctx.lineCap = "butt";
-                            ctx.beginPath(); ctx.moveTo(lane.startX, lane.y); ctx.lineTo(lane.endX, lane.y); ctx.stroke();
-                            ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.setLineDash([15, 15]);
-                            ctx.beginPath(); ctx.moveTo(lane.startX, lane.y); ctx.lineTo(lane.endX, lane.y); ctx.stroke(); ctx.setLineDash([]);
-                            let portalRadius = 40 + Math.sin(frameCount * 0.1) * 5; ctx.fillStyle = "rgba(142, 68, 173, 0.8)"; ctx.beginPath(); ctx.ellipse(lane.startX, lane.y, 20, portalRadius, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.ellipse(lane.startX, lane.y, 10, portalRadius - 15, 0, 0, Math.PI * 2); ctx.fill();
-                        });
-
-                        let activeBoss = enemies.find(e => e.type === 'boss');
-                        if (activeBoss) { ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(W / 2 - 300, 90, 600, 40); ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 296, 94, 592 * (activeBoss.hp / activeBoss.maxHp), 32); drawText(`기계 마신왕 (${Math.floor(activeBoss.hp)} / ${activeBoss.maxHp})`, W / 2, 110, 28, "white"); }
-
-                        fieldSlots.forEach(s => {
-                            let isHovered = Math.hypot(mouseX - s.x, mouseY - s.y) < 60;
-                            ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 45, 25, 0, 0, Math.PI * 2); ctx.fill();
-
-                            if (s.zone === 'unbuildable') {
-                                ctx.fillStyle = "rgba(100, 100, 100, 0.4)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 45, 25, 0, 0, Math.PI * 2); ctx.fill();
-                                drawText("설치불가", s.x, s.y, 16, "rgba(231, 76, 60, 0.8)");
-                            } else if (s.zone === 'buff') {
-                                ctx.fillStyle = "rgba(46, 204, 113, 0.25)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 45, 25, 0, 0, Math.PI * 2); ctx.fill();
-                                drawText("영기(버프)", s.x, s.y - 5, 16, "rgba(46, 204, 113, 0.8)");
-                                if (s.char && frameCount % 60 === 0) {
-                                    let mh = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp);
-                                    if (s.char.hp < mh) { s.char.hp = Math.min(mh, s.char.hp + 20); createFloatingText(s.x, s.y - 30, "+20", "#2ecc71", false); }
-                                }
-                            }
-
-                            if (selectedInvenIdx !== -1 && !s.char && isHovered && !isHeroTargeting) {
-                                ctx.strokeStyle = (s.zone === 'unbuildable') ? "red" : "lime"; ctx.lineWidth = 4; ctx.stroke();
-                                if (s.zone !== 'unbuildable') {
-                                    let charData = (selectedInvenIdx === 'merc') ? pendingMerc : deck[selectedInvenIdx];
-                                    let range = charData.range;
-                                    let fillColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.3)" : "rgba(231, 76, 60, 0.3)"; let strokeColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.9)" : "rgba(231, 76, 60, 0.9)";
-                                    ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 3;
-
-                                    if (charData.id === 101) {
-                                        ctx.fillRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70);
-                                        ctx.strokeRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70);
-                                    } else if (charData.attackType === 'heal' || (charData.attackType === 'melee' && charData.role !== '탱커')) {
-                                        ctx.beginPath(); ctx.arc(s.x, s.y, range, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                                    } else {
-                                        ctx.fillRect(s.x - range, s.y - 35, range * 2, 70); ctx.strokeRect(s.x - range, s.y - 35, range * 2, 70);
-                                    }
-                                }
-                            }
-
-                            if (s.char) {
-                                if (s.char.id !== 999 && timeStopFrames <= 0 && frameCount % 60 === 0) {
-                                    let regenAmount = getBase('regenHP', 0);
-                                    if (regenAmount > 0) {
-                                        regenAmount = Math.max(1, Math.floor(regenAmount));
-                                        let maxH = getBase('hp', s.char.maxHp);
-                                        if (s.char.hp < maxH) {
-                                            s.char.hp = Math.min(maxH, s.char.hp + regenAmount);
-                                            createFloatingText(s.x, s.y - 40, `+${regenAmount}`, "#2ecc71", false);
-                                        }
-                                    }
-                                }
-
-                                let cw = 55; let ch = 90; let renderOffsetX = 0; let renderOffsetY = 0; let renderRotate = 0; let scaleX = 1; let scaleY = 1;
-
-                                if (s.char.strikeAnim > 0) { let progress = Math.sin((1 - s.char.strikeAnim / 6) * Math.PI); renderOffsetX = progress * s.char.lungeDist * (s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1); renderOffsetY = progress * s.char.lungeDist * (s.char.strikeDirY || 0); renderRotate = progress * 0.05 * ((s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1) > 0 ? 1 : -1); s.char.strikeAnim--; }
-                                if (s.char.jumpAnim > 0) {
-                                    let progress = s.char.jumpAnim / 10; let arc = Math.sin(progress * Math.PI); renderOffsetY = -arc * 80; if (s.char.jumpAnim < 3) { scaleX = 1.3; scaleY = 0.7; } else if (s.char.jumpAnim > 8) { scaleX = 0.8; scaleY = 1.2; }
-                                    if (s.char.jumpAnim === 1 && s.char.pendingStrike) {
-                                        let p = s.char.pendingStrike;
-                                        if (s.char.role === '탱커') { let hitCount = 0; enemies.forEach(en => { if (en.lane.id === s.laneId && Math.abs(en.x - s.x) <= s.char.range) { en.hp -= p.dmg; applyLifesteal(s.char, p.dmg); en.hitAnim = 6; createFloatingText(en.x, en.y - 50, Math.floor(p.dmg), p.isCrit ? "#ff3333" : "white", p.isCrit); if (en.type !== 'boss' && en.type !== 'midboss') en.x += 90; hitCount++; } }); if (hitCount > 0 && p.isCrit) shakeFrames = 3; }
-                                        else { if (p.target && p.target.hp > 0) { p.target.hp -= p.dmg; applyLifesteal(s.char, p.dmg); p.target.hitAnim = 6; createFloatingText(p.target.x, p.target.y - 50, Math.floor(p.dmg), p.isCrit ? "#ff3333" : "white", p.isCrit); if (p.isCrit) shakeFrames = 3; if (s.char.knockback && p.target.type !== 'boss' && p.target.type !== 'midboss') p.target.x += 45; } }
-                                        s.char.pendingStrike = null;
-                                    }
-                                    s.char.jumpAnim--;
-                                }
-
-                                ctx.save(); ctx.translate(s.x + renderOffsetX, s.y + renderOffsetY); ctx.rotate(renderRotate); ctx.scale(scaleX, scaleY);
-                                if (invincibleFrames > 0 || s.char.id === 999) { ctx.strokeStyle = "gold"; ctx.lineWidth = 3; ctx.strokeRect(- (cw / 2) - 5, -ch + 5, cw + 10, ch + 10); }
-                                ctx.fillStyle = s.char.color; ctx.fillRect(-(cw / 2), -ch + 10, cw, ch); drawText(s.char.name, 0, -ch - 5, 18, "#fff");
-                                let curMaxHp = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp); ctx.fillStyle = "lime"; ctx.fillRect(-(cw / 2), 15, cw * (s.char.hp / curMaxHp), 6); ctx.restore();
-
-                                if (s.char.showRangeTimer > 0) {
-                                    let fillColor = s.char.attackType === 'heal' ? "rgba(46, 204, 113, 0.15)" : "rgba(231, 76, 60, 0.15)"; ctx.fillStyle = fillColor;
-                                    if (s.char.id === 101) {
-                                        ctx.fillRect(s.x - s.char.range, s.y - rowHeight - 35, s.char.range * 2, (rowHeight * 2) + 70);
-                                    } else if (s.char.attackType === 'heal' || (s.char.attackType === 'melee' && s.char.role !== '탱커')) {
-                                        ctx.beginPath(); ctx.arc(s.x, s.y, s.char.range, 0, Math.PI * 2); ctx.fill();
-                                    } else {
-                                        ctx.fillRect(s.x - s.char.range, s.y - 35, s.char.range * 2, 70);
-                                    }
-                                    s.char.showRangeTimer--;
-                                }
-                            } else if (!isHovered) { drawText("+", s.x, s.y, 28, "rgba(255,255,255,0.6)"); }
+                            ctx.strokeStyle = timeStopFrames > 0 ? "rgba(255,255,255,0.05)" : lane.color; ctx.lineWidth = 60 * lane.scale; ctx.lineCap = "butt"; ctx.beginPath(); ctx.moveTo(lane.startX, lane.y); ctx.lineTo(lane.endX, lane.y); ctx.stroke();
+                            ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.setLineDash([15, 15]); ctx.beginPath(); ctx.moveTo(lane.startX, lane.y); ctx.lineTo(lane.endX, lane.y); ctx.stroke(); ctx.setLineDash([]);
+                            let portalRadius = 50 + Math.sin(frameCount * 0.1) * 5; ctx.fillStyle = "rgba(142, 68, 173, 0.8)"; ctx.beginPath(); ctx.ellipse(lane.startX, lane.y, 25, portalRadius, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.ellipse(lane.startX, lane.y, 15, portalRadius - 15, 0, 0, Math.PI * 2); ctx.fill();
                         });
 
                         if (mercState === 'spinning') {
-                            mercSpinFrames--;
-                            const icons = ['🌟', '🔥', '💀', '💨'];
-
-                            if (mercSpinFrames > 150) { if (frameCount % 2 === 0) document.getElementById('mSlot1').innerText = icons[Math.floor(Math.random() * 4)]; }
-                            else document.getElementById('mSlot1').innerText = icons[mercFinalIcons[0]];
-
-                            if (mercSpinFrames > 120) { if (frameCount % 2 === 0) document.getElementById('mSlot2').innerText = icons[Math.floor(Math.random() * 4)]; }
-                            else document.getElementById('mSlot2').innerText = icons[mercFinalIcons[1]];
-
-                            if (mercSpinFrames > 70) {
-                                if (frameCount % 4 === 0) document.getElementById('mSlot3').innerText = icons[Math.floor(Math.random() * 4)];
-                            } else {
-                                if (mercSpinFrames === 70) { shakeFrames = 5; createFloatingText(W / 2, H / 2 - 50, "기운이 모인다!", "#f1c40f", true); }
-                                document.getElementById('mSlot3').innerText = icons[mercFinalIcons[2]];
-                            }
-
-                            if (mercSpinFrames > 0) {
-                                if (frameCount % 6 === 0) document.getElementById('mSlot4').innerText = icons[Math.floor(Math.random() * 4)];
-                            } else {
+                            mercSpinFrames--; const icons = ['🌟', '🔥', '💀', '💨'];
+                            if (mercSpinFrames > 150) { if (frameCount % 2 === 0) document.getElementById('mSlot1').innerText = icons[Math.floor(Math.random() * 4)]; } else document.getElementById('mSlot1').innerText = icons[mercFinalIcons[0]];
+                            if (mercSpinFrames > 120) { if (frameCount % 2 === 0) document.getElementById('mSlot2').innerText = icons[Math.floor(Math.random() * 4)]; } else document.getElementById('mSlot2').innerText = icons[mercFinalIcons[1]];
+                            if (mercSpinFrames > 70) { if (frameCount % 4 === 0) document.getElementById('mSlot3').innerText = icons[Math.floor(Math.random() * 4)]; } else { if (mercSpinFrames === 70) { shakeFrames = 5; createFloatingText(W / 2, H / 2 - 50, "기운이 모인다!", "#f1c40f", true); } document.getElementById('mSlot3').innerText = icons[mercFinalIcons[2]]; }
+                            if (mercSpinFrames > 0) { if (frameCount % 6 === 0) document.getElementById('mSlot4').innerText = icons[Math.floor(Math.random() * 4)]; } else {
                                 if (mercSpinFrames === 0) { shakeFrames = 10; createFloatingText(W / 2, H / 2 - 50, "용병 확정!!", "#0abde3", true); }
-                                document.getElementById('mSlot4').innerText = icons[mercFinalIcons[3]];
-
-                                let btn = document.getElementById('mercBtn');
-                                let traitBox = document.getElementById('mercTraitInfo');
-                                let tier = mercFinalTier;
-
+                                document.getElementById('mSlot4').innerText = icons[mercFinalIcons[3]]; let btn = document.getElementById('mercBtn'); let traitBox = document.getElementById('mercTraitInfo'); let tier = mercFinalTier;
                                 if (mercRewardType === 'merc') {
-                                    if (tier === 1) pendingMerc = { id: 101, name: '개방거지', role: '곡선원거리', cost: 0, attackType: 'ranged', projType: 'parabola', range: 1000, damage: 8, color: '#8d6e63', cd: 0, maxCd: 35, hp: 50, maxHp: 50, state: 'ready', timer: 0, accuracy: 0.7, aoe: false };
-                                    else if (tier === 2) {
-                                        pendingMerc = { id: 10, name: '마교혈투', role: '엘리트근접', cost: 0, attackType: 'melee', range: 220, damage: 80, color: '#c0392b', cd: 0, maxCd: 17, hp: 250, maxHp: 250, state: 'ready', timer: 0, knockback: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, lungeDist: 0, strikeDirX: 1, strikeDirY: 0 };
-                                    }
-                                    else if (tier === 3) {
-                                        pendingMerc = Math.random() > 0.5
-                                            ? { id: 8, name: '북해빙궁주', role: '결빙빔', cost: 0, attackType: 'ranged', projType: 'beam', range: 1000, damage: 30, color: '#00cec9', cd: 0, maxCd: 45, hp: 60, maxHp: 60, state: 'ready', timer: 0, accuracy: 1.0, aoe: false, slow: true, friendlyFire: true }
-                                            : { id: 3, name: '아미의선', role: '광역힐러', cost: 0, attackType: 'heal', range: 210, healAmount: 35, color: '#ff9ff3', cd: 0, maxCd: 38, hp: 70, maxHp: 70, state: 'ready', timer: 0, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0 };
-                                    }
-                                    else pendingMerc = { id: 102, name: '벽력탄왕', role: '대폭발', cost: 0, attackType: 'ranged', projType: 'parabola', range: 750, damage: 200, color: '#ff3f34', cd: 0, maxCd: 58, hp: 80, maxHp: 80, state: 'ready', timer: 0, accuracy: 0.7, aoe: true, aoeRadius: 240, friendlyFire: true };
+                                    if (tier === 1) pendingMerc = { id: 11, name: '개방거지', role: '곡선원거리', cost: 0, attackType: 'ranged', projType: 'parabola', range: 1000, damage: 8, color: '#8d6e63', cd: 0, maxCd: 35, hp: 50, maxHp: 50, state: 'ready', timer: 0, accuracy: 0.7, aoe: false, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 };
+                                    else if (tier === 2) pendingMerc = { id: 10, name: '마교혈투', role: '엘리트근접', cost: 0, attackType: 'melee', range: 220, damage: 80, color: '#c0392b', cd: 0, maxCd: 17, hp: 250, maxHp: 250, state: 'ready', timer: 0, knockback: false, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, lungeDist: 0, strikeDirX: 1, strikeDirY: 0, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 };
+                                    else if (tier === 3) pendingMerc = Math.random() > 0.5 ? { id: 8, name: '북해빙궁주', role: '결빙빔', cost: 0, attackType: 'ranged', projType: 'beam', range: 1000, damage: 30, color: '#00cec9', cd: 0, maxCd: 45, hp: 60, maxHp: 60, state: 'ready', timer: 0, accuracy: 1.0, aoe: false, slow: true, friendlyFire: true, ingameScale: 1.0, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 } : { id: 9, name: '아미의선', role: '광역힐러', cost: 0, attackType: 'heal', range: 210, healAmount: 35, color: '#ff9ff3', cd: 0, maxCd: 38, hp: 70, maxHp: 70, state: 'ready', timer: 0, showRangeTimer: 0, renderOffsetX: 0, jumpAnim: 0, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 };
+                                    else pendingMerc = { id: 12, name: '벽력탄왕', role: '대폭발', cost: 0, attackType: 'ranged', projType: 'parabola', range: 750, damage: 200, color: '#ff3f34', cd: 0, maxCd: 58, hp: 80, maxHp: 80, state: 'ready', timer: 0, accuracy: 0.7, aoe: true, aoeRadius: 240, friendlyFire: true, ingameScale: 1, fontOffsetY: 0, projOffsetX: 0, projOffsetY: 0 };
 
                                     let dName = pendingMerc.name;
-                                    if (dName.length >= 4) dName = dName.substring(0, 2) + '<br>' + dName.substring(2);
-                                    btn.innerHTML = `${dName}`;
-                                    btn.style.background = pendingMerc.color;
+                                    btn.style.display = "flex"; btn.style.flexDirection = "column"; btn.style.justifyContent = "flex-end"; btn.style.paddingBottom = "2px";
+                                    btn.style.backgroundColor = "transparent"; btn.style.backgroundBlendMode = "normal";
+                                    btn.style.backgroundImage = `linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%), url('./assets/portraits/char_${pendingMerc.id}.png')`;
+                                    btn.style.backgroundSize = "cover"; btn.style.backgroundPosition = "center";
+                                    btn.innerHTML = `<span style="font-size:23px; color:white; font-weight:bold; text-shadow: 3px 3px 5px #000; width:100%; text-align:center; white-space:nowrap;">${dName}</span>`;
 
-                                    traitBox.style.display = 'block';
-                                    traitBox.innerHTML = `${pendingMerc.role}`;
+                                    traitBox.style.display = 'block'; traitBox.innerHTML = `${pendingMerc.role}`;
                                 } else {
-                                    let buffIsAtk = Math.random() > 0.5;
-                                    let bVal = tier === 1 ? 0.01 : (tier === 2 ? 0.03 : (tier === 3 ? 0.05 : 0.10));
-                                    let bText = tier === 1 ? "1%" : (tier === 2 ? "3%" : (tier === 3 ? "5%" : "10%"));
-                                    let bName = buffIsAtk ? `공격력<br>${bText}↑` : `공속<br>${bText}↑`;
-
+                                    let buffIsAtk = Math.random() > 0.5; let bVal = tier === 1 ? 0.01 : (tier === 2 ? 0.03 : (tier === 3 ? 0.05 : 0.10)); let bText = tier === 1 ? "1%" : (tier === 2 ? "3%" : (tier === 3 ? "5%" : "10%")); let bName = buffIsAtk ? `공격력<br>${bText}↑` : `공속<br>${bText}↑`;
                                     pendingMerc = { type: 'buff', buffType: buffIsAtk ? 'atk' : 'spd', value: bVal, name: buffIsAtk ? `공격력 ${bText} 증가!` : `공속 ${bText} 증가!` };
-                                    btn.innerHTML = bName;
-                                    btn.style.background = "#27ae60";
+                                    btn.style.display = "flex"; btn.style.flexDirection = "column"; btn.style.justifyContent = "center"; btn.style.alignItems = "center"; btn.style.paddingBottom = "0";
+                                    btn.style.backgroundImage = "none"; btn.style.backgroundColor = "#27ae60";
+                                    btn.innerHTML = `<span style="font-size:22px; color:white; font-weight:bold; text-shadow: 2px 2px 4px #000; text-align:center; line-height:1.2;">${bName}</span>`;
                                     traitBox.style.display = 'none';
                                 }
-
-                                mercState = 'rewarded';
-                                btn.classList.add('ready');
+                                mercState = 'rewarded'; btn.classList.add('ready');
                             }
                         }
 
                         let stageMulti = Math.pow(1.20, currentStage - 1);
-
-                        if (waveState === 'stage_intro') {
-                            waveWaitTimer--;
-                            if (waveWaitTimer <= 0) { waveState = 'wave_intro'; waveWaitTimer = 90; }
-                        }
+                        if (waveState === 'stage_intro') { waveWaitTimer--; if (waveWaitTimer <= 0) { waveState = 'wave_intro'; waveWaitTimer = 90; } }
                         else if (waveState === 'wave_intro') {
                             waveWaitTimer--;
                             if (waveWaitTimer <= 0) {
-                                waveState = 'spawning';
-                                waveTimer = waveDurations[currentWave];
-                                enemiesSpawned = 0;
-
-                                let isGuaranteed = (currentWave === 1 && midBossTriggeredWaves.length === 0);
-                                let isLucky = Math.random() < 0.45;
-
-                                if ((isGuaranteed || isLucky) && currentWave < 9) {
-                                    midBossTriggeredWaves.push(currentWave);
-                                    document.getElementById('midBossUI').style.display = 'block';
-                                    createFloatingText(W / 2, 200, "⚠️ 마신의 기운이 감지되었소!", "#e74c3c", true);
-                                } else {
-                                    document.getElementById('midBossUI').style.display = 'none';
-                                }
+                                waveState = 'spawning'; waveTimer = waveDurations[currentWave]; enemiesSpawned = 0;
+                                let isGuaranteed = (currentWave === 1 && midBossTriggeredWaves.length === 0); let isLucky = Math.random() < 0.45;
+                                if ((isGuaranteed || isLucky) && currentWave < 9) { midBossTriggeredWaves.push(currentWave); document.getElementById('midBossUI').style.display = 'block'; createFloatingText(W / 2, 200, "⚠️ 마신의 기운이 감지되었소!", "#e74c3c", true); } else { document.getElementById('midBossUI').style.display = 'none'; }
                             }
                         }
                         else if (waveState === 'spawning' && timeStopFrames <= 0) {
                             waveTimer--; let spawnInterval = Math.max(15, Math.floor(50 - (currentWave * 3)));
-
                             if (enemiesSpawned >= waveQuotas[currentWave] && enemies.length === 0) { waveTimer = 0; }
-
                             if (currentWave === 9) {
-                                if (frameCount % spawnInterval === 0 && enemiesSpawned < waveQuotas[9] * 0.8) {
-                                    const lane = lanes[Math.floor(Math.random() * lanes.length)];
-                                    enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(150 * stageMulti), maxHp: Math.floor(150 * stageMulti), slowTimer: 0, speed: 0.6, damage: Math.floor((15 + currentWave * 2) * stageMulti), color: '#e67e22', range: 55, isRanged: false, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: 20 });
-                                    enemiesSpawned++;
-                                }
-                                if (!bossSpawned && (waveTimer <= waveDurations[9] * 0.2 || enemiesSpawned >= waveQuotas[9] * 0.8)) {
-                                    let lane = lanes[2]; enemies.push({ type: 'boss', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(5000 * stageMulti), maxHp: Math.floor(5000 * stageMulti), speed: 0.19, cd: 0, slowTimer: 0, hitAnim: 0, poisoned: false, reward: 500 }); bossSpawned = true; showWaveWarning = 150;
-                                }
+                                if (frameCount % spawnInterval === 0 && enemiesSpawned < waveQuotas[9] * 0.8) { const lane = lanes[Math.floor(Math.random() * lanes.length)]; enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(150 * stageMulti), maxHp: Math.floor(150 * stageMulti), slowTimer: 0, speed: 0.6, damage: Math.floor((15 + currentWave * 2) * stageMulti), color: '#e67e22', range: 55, isRanged: false, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: 20 }); enemiesSpawned++; }
+                                if (!bossSpawned && (waveTimer <= waveDurations[9] * 0.2 || enemiesSpawned >= waveQuotas[9] * 0.8)) { let lane = lanes[2]; enemies.push({ type: 'boss', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(5000 * stageMulti), maxHp: Math.floor(5000 * stageMulti), speed: 0.19, cd: 0, slowTimer: 0, hitAnim: 0, poisoned: false, reward: 500 }); bossSpawned = true; showWaveWarning = 150; }
                                 if (bossSpawned && enemies.length === 0) { waveState = 'stage_cleared'; waveWaitTimer = 120; }
                             } else {
                                 if (frameCount % spawnInterval === 0 && enemiesSpawned < waveQuotas[currentWave]) {
@@ -2320,22 +1789,87 @@
                                     else if (tRand < 0.66) { eHp = baseEnemyHp / 2; eSpeed = 0.75; eDmg = 3 + (currentWave * 1); eColor = '#e67e22'; eRange = 55; eIsRanged = false; rew = 10; }
                                     else { eHp = baseEnemyHp * 0.8; eSpeed = 0.45; eDmg = 15 + (currentWave * 2); eColor = '#2980b9'; eRange = 400; eIsRanged = true; rew = 14; }
                                     let finalReward = Math.floor(rew + (currentWave * 5));
-                                    enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(eHp * stageMulti), maxHp: Math.floor(eHp * stageMulti), slowTimer: 0, speed: eSpeed, damage: Math.floor(eDmg * stageMulti), color: eColor, range: eRange, isRanged: eIsRanged, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: finalReward });
-                                    enemiesSpawned++;
+                                    enemies.push({ type: 'normal', x: lane.startX, y: lane.y, lane: lane, hp: Math.floor(eHp * stageMulti), maxHp: Math.floor(eHp * stageMulti), slowTimer: 0, speed: eSpeed, damage: Math.floor(eDmg * stageMulti), color: eColor, range: eRange, isRanged: eIsRanged, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: finalReward }); enemiesSpawned++;
                                 }
                                 if (waveTimer <= 0) { currentWave++; waveState = 'wave_intro'; waveWaitTimer = 90; }
                             }
-                        } else if (waveState === 'stage_cleared') {
-                            waveWaitTimer--;
+                        } else if (waveState === 'stage_cleared') { waveWaitTimer--; if (waveWaitTimer <= 0) { if (currentStage === currentMaxStage) currentMaxStage++; showVictoryPopup(); saveGame(); } }
 
-                            if (waveWaitTimer <= 0) {
-                                if (currentStage === currentMaxStage) currentMaxStage++;
-                                showVictoryPopup();
-                                saveGame();
+                        let renderEntities = [];
+
+                        fieldSlots.forEach(s => {
+                            let isHovered = Math.hypot(mouseX - s.x, mouseY - s.y) < 60;
+                            ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 60, 35, 0, 0, Math.PI * 2); ctx.fill();
+                            if (s.zone === 'unbuildable') { ctx.fillStyle = "rgba(100, 100, 100, 0.4)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 60, 35, 0, 0, Math.PI * 2); ctx.fill(); drawText("설치불가", s.x, s.y, 20, "rgba(231, 76, 60, 0.8)"); }
+                            else if (s.zone === 'buff') { ctx.fillStyle = "rgba(46, 204, 113, 0.25)"; ctx.beginPath(); ctx.ellipse(s.x, s.y, 60, 35, 0, 0, Math.PI * 2); ctx.fill(); drawText("영기(버프)", s.x, s.y - 5, 20, "rgba(46, 204, 113, 0.8)"); if (s.char && frameCount % 60 === 0) { let mh = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp); if (s.char.hp < mh) { s.char.hp = Math.min(mh, s.char.hp + 20); createFloatingText(s.x, s.y - 30, "+20", "#2ecc71", false); } } }
+
+                            if (selectedInvenIdx !== -1 && !s.char && isHovered && !isHeroTargeting) {
+                                ctx.strokeStyle = (s.zone === 'unbuildable') ? "red" : "lime"; ctx.lineWidth = 4; ctx.stroke();
+                                if (s.zone !== 'unbuildable') {
+                                    let charData = (selectedInvenIdx === 'merc') ? pendingMerc : deck[selectedInvenIdx]; let range = charData.range; let fillColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.3)" : "rgba(231, 76, 60, 0.3)"; let strokeColor = charData.attackType === 'heal' ? "rgba(46, 204, 113, 0.9)" : "rgba(231, 76, 60, 0.9)"; ctx.fillStyle = fillColor; ctx.strokeStyle = strokeColor; ctx.lineWidth = 3;
+                                    if (charData.id === 11) { ctx.fillRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70); ctx.strokeRect(s.x - range, s.y - rowHeight - 35, range * 2, (rowHeight * 2) + 70); }
+                                    else if (charData.attackType === 'heal' || (charData.attackType === 'melee' && charData.role !== '탱커')) { ctx.beginPath(); ctx.arc(s.x, s.y, range, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+                                    else { ctx.fillRect(s.x - range, s.y - 35, range * 2, 70); ctx.strokeRect(s.x - range, s.y - 35, range * 2, 70); }
+                                }
                             }
-                        }
 
-                        enemies.forEach((e, i) => {
+                            if (s.char) {
+                                if (s.char.id !== 999 && timeStopFrames <= 0 && frameCount % 60 === 0) { let regenAmount = getBase('regenHP', 0); if (regenAmount > 0) { regenAmount = Math.max(1, Math.floor(regenAmount)); let maxH = getBase('hp', s.char.maxHp); if (s.char.hp < maxH) { s.char.hp = Math.min(maxH, s.char.hp + regenAmount); createFloatingText(s.x, s.y - 40, `+${regenAmount}`, "#2ecc71", false); } } }
+                                if (s.char.strikeAnim > 0) s.char.strikeAnim--;
+                                if (s.char.jumpAnim > 0) { if (s.char.jumpAnim === 1 && s.char.pendingStrike) { let p = s.char.pendingStrike; if (s.char.role === '탱커') { let hitCount = 0; enemies.forEach(en => { if (en.lane.id === s.laneId && Math.abs(en.x - s.x) <= s.char.range) { en.hp -= p.dmg; applyLifesteal(s.char, p.dmg); en.hitAnim = 6; createFloatingText(en.x, en.y - 50, Math.floor(p.dmg), p.isCrit ? "#ff3333" : "white", p.isCrit); if (en.type !== 'boss' && en.type !== 'midboss') en.x += 90; hitCount++; } }); if (hitCount > 0 && p.isCrit) shakeFrames = 3; } else { if (p.target && p.target.hp > 0) { p.target.hp -= p.dmg; applyLifesteal(s.char, p.dmg); p.target.hitAnim = 6; createFloatingText(p.target.x, p.target.y - 50, Math.floor(p.dmg), p.isCrit ? "#ff3333" : "white", p.isCrit); if (p.isCrit) shakeFrames = 3; if (s.char.knockback && p.target.type !== 'boss' && p.target.type !== 'midboss') p.target.x += 45; } } s.char.pendingStrike = null; } s.char.jumpAnim--; }
+                                if (s.char.showRangeTimer > 0) s.char.showRangeTimer--;
+
+                                renderEntities.push({ y: s.y, type: 'char', data: s });
+
+                                let cdReduce = (s.char.id === 999 || s.char.id > 7) ? 0 : getBase('atkSpeed', 0); let actualMaxCd = Math.max(3, Math.floor(s.char.maxCd * (1 - cdReduce))); if (h0BuffTimer > 0) actualMaxCd = Math.max(2, Math.floor(actualMaxCd / 2));
+                                if (s.char.attackType === 'heal') {
+                                    if (s.char.cd <= 0) {
+                                        let targets = fieldSlots.filter(fs => fs.char && fs.char.hp < getBase('hp', fs.char.maxHp) && Math.hypot(fs.x - s.x, fs.y - s.y) <= s.char.range); if (targets.length > 0) {
+                                            targets.sort((a, b) => a.char.hp - b.char.hp); let t = targets[0]; let distY = (t.y - 20) - (s.y - 30); let distX = t.x - s.x; let T = 29; let g = 0.87; let vx = distX / T; let vy = (distY - 0.5 * g * T * T) / T; let actualHeal = getBase('healInc', s.char.healAmount);
+                                            // [v13.10] 투사체 생성 시 오프셋 적용 및 방향 반영
+                                            let projStartX = s.x + ((s.char.projOffsetX || 0) * (s.char.facingDir || 1));
+                                            let projStartY = s.y - 30 + (s.char.projOffsetY || 0);
+                                            projectiles.push({ type: 'heal_parabola', x: projStartX, y: projStartY, vx: vx, vy: vy, g: g, targetY: t.y - 20, color: s.char.color, target: t.char, heal: actualHeal }); s.char.cd = actualMaxCd;
+                                        }
+                                    } else { s.char.cd--; } return;
+                                }
+                                let enemiesInRange = enemies.filter(e => { if (s.char.attackType === 'melee' && s.char.role !== '탱커') return Math.hypot(e.x - s.x, e.y - s.y) <= s.char.range; else if (s.char.id === 11) return Math.abs(e.lane.id - s.laneId) <= 1 && Math.abs(e.x - s.x) <= s.char.range; else return e.lane.id === s.laneId && Math.abs(e.x - s.x) <= s.char.range; });
+                                if (enemiesInRange.length > 0) {
+                                    if (s.char.projType === 'beam' || s.char.projType === 'straight') { enemiesInRange.sort((a, b) => a.x - b.x); } else { enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); }); }
+                                    let target = enemiesInRange[0]; let dmgStat = s.char.attackType === 'melee' ? 'atkMelee' : 'atkRanged'; let finalBaseDmg = (s.char.id === 999 || s.char.id > 7) ? s.char.damage : getBase(dmgStat, s.char.damage); let shootDir = target.x > s.x ? 1 : -1;
+
+                                    // [v13.10] 플립을 위한 타겟팅 방향 기억
+                                    s.char.facingDir = shootDir;
+
+                                    if (s.char.attackType === 'ranged') {
+                                        if (s.char.cd <= 0) {
+                                            let isMiss = s.char.projType !== 'pierce' && Math.random() > s.char.accuracy; let isCrit = !isMiss && Math.random() < getBase('critRate', 0); let targetX = target.x; let targetY = target.y - 20;
+                                            // [v13.10] 오프셋 적용
+                                            let projStartX = s.x + ((s.char.projOffsetX || 0) * shootDir);
+                                            let projStartY = s.y - 30 + (s.char.projOffsetY || 0);
+
+                                            if (s.char.projType === 'pierce') { targetX = s.x + (s.char.range * shootDir); projectiles.push({ type: s.char.projType, startX: projStartX, startY: projStartY, tx: targetX, ty: projStartY, progress: 0, char: s.char, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: s.laneId, hitTargets: [], color: s.char.color }); }
+                                            else {
+                                                if (isMiss) { targetX += (Math.random() > 0.5 ? 1 : -1) * 150; targetY += (Math.random() > 0.5 ? 1 : -1) * 50; }
+                                                if (s.char.projType === 'parabola') { let distY = targetY - projStartY; let distX = targetX - projStartX; let T = (s.char.id === 11) ? 35 : 50; let g = (s.char.id === 11) ? 1.5 : 0.86; let predictedX = isMiss ? targetX : targetX - (target.speed * T * shootDir); let vx = (predictedX - projStartX) / T; let vy = (distY - 0.5 * g * T * T) / T; projectiles.push({ type: 'parabola', x: projStartX, y: projStartY, vx: vx, vy: vy, g: g, targetY: target.y - 20, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: target.lane.id }); }
+                                                else { projectiles.push({ type: s.char.projType, startX: projStartX, startY: projStartY, tx: targetX, ty: targetY, progress: 0, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: s.laneId, shootDir: shootDir }); }
+                                            }
+                                            if (['straight', 'pierce', 'beam'].includes(s.char.projType) && s.char.id !== 999 && s.char.id <= 7) { let alliesInLine = fieldSlots.filter(fs => fs.char && fs.char !== s.char && fs.laneId === s.laneId && ((shootDir === 1 && fs.x > s.x && fs.x < targetX) || (shootDir === -1 && fs.x < s.x && fs.x > targetX))); alliesInLine.forEach(fs => { let friendlyDmg = Math.max(1, Math.floor(finalBaseDmg * 0.2)); if (invincibleFrames > 0) friendlyDmg = 0; fs.char.hp -= friendlyDmg; createFloatingText(fs.x, fs.y - 45, `-${friendlyDmg}`, "#ff0000", false); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id === 999 || fs.char.id > 7) { fs.char = null; } else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } }); }
+                                            s.char.cd = actualMaxCd;
+                                        } else { s.char.cd--; }
+                                    } else if (s.char.attackType === 'melee') {
+                                        if (s.char.cd <= 0) {
+                                            let isCrit = Math.random() < getBase('critRate', 0); let finalDmg = isCrit ? Math.floor(finalBaseDmg * getBase('critDmg', 0)) : finalBaseDmg;
+                                            if (s.char.role.includes('근거리') || s.char.role.includes('엘리트')) { s.char.strikeAnim = 6; let dist = Math.hypot(target.x - s.x, target.y - s.y); s.char.strikeDirX = dist > 0 ? (target.x - s.x) / dist : shootDir; s.char.strikeDirY = dist > 0 ? (target.y - s.y) / dist : 0; s.char.lungeDist = Math.min(s.char.range, Math.max(0, dist - 40)); target.hp -= finalDmg; target.hitAnim = 4; applyLifesteal(s.char, finalDmg); createFloatingText(target.x, target.y - 50, Math.floor(finalDmg), isCrit ? "#ff3333" : "white", isCrit); if (isCrit) shakeFrames = 3; }
+                                            if (s.char.role === '탱커') { s.char.jumpAnim = 10; s.char.pendingStrike = { target: target, dmg: finalDmg, isCrit: isCrit }; } s.char.cd = actualMaxCd; ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.beginPath(); ctx.arc(target.x, target.y - 20, 20, 0, Math.PI * 2); ctx.fill();
+                                        } else { s.char.cd--; }
+                                    }
+                                } else if (s.char.cd > 0) { s.char.cd--; }
+                            } else if (!isHovered) { drawText("+", s.x, s.y, 36, "rgba(255,255,255,0.6)"); }
+                        });
+
+                        for (let i = enemies.length - 1; i >= 0; i--) {
+                            let e = enemies[i];
                             if (e.kbTimer > 0) { e.x = Math.min(e.lane.startX, e.x + e.kbSpeed); e.kbTimer--; }
                             else if (timeStopFrames <= 0) {
                                 if (e.slowTimer > 0) e.slowTimer--;
@@ -2345,237 +1879,163 @@
 
                                 if (e.isRanged && e.type !== 'boss') {
                                     if (e.type === 'midboss') {
-                                        if (e.cd <= 0) {
-                                            let targets = fieldSlots.filter(fs => fs.char);
-                                            if (targets.length > 0) {
-                                                let t = targets[Math.floor(Math.random() * targets.length)];
-                                                let distY = (t.y - 20) - (e.y - 30); let distX = t.x - e.x;
-                                                let T = 60; let g = 0.5; let vx = distX / T; let vy = (distY - 0.5 * g * T * T) / T;
-                                                projectiles.push({ type: 'midbossProj', x: e.x, y: e.y - 30, vx: vx, vy: vy, g: g, targetY: t.y - 20, tx: t.x, ty: t.y - 20, color: '#c0392b', damage: e.damage });
-                                                e.cd = 90;
-                                            }
-                                        } else { e.cd--; }
+                                        if (e.cd <= 0) { let targets = fieldSlots.filter(fs => fs.char); if (targets.length > 0) { let t = targets[Math.floor(Math.random() * targets.length)]; let distY = (t.y - 20) - (e.y - 30); let distX = t.x - e.x; let T = 60; let g = 0.5; let vx = distX / T; let vy = (distY - 0.5 * g * T * T) / T; projectiles.push({ type: 'midbossProj', x: e.x, y: e.y - 30, vx: vx, vy: vy, g: g, targetY: t.y - 20, tx: t.x, ty: t.y - 20, color: '#c0392b', damage: e.damage }); e.cd = 90; } } else { e.cd--; }
                                     } else {
                                         let validTargets = fieldSlots.filter(fs => fs.char && fs.laneId === e.lane.id && e.x > fs.x && e.x - fs.x <= e.range);
-                                        if (validTargets.length > 0) {
-                                            validTargets.sort((a, b) => b.x - a.x); let targetSlot = validTargets[0];
-                                            if (e.cd <= 0) { projectiles.push({ type: 'enemyProj', startX: e.x, startY: e.y - 30, tx: targetSlot.x, ty: targetSlot.y - 20, progress: 0, color: e.color, damage: e.damage }); e.cd = 50; } else { e.cd--; }
-                                        }
+                                        if (validTargets.length > 0) { validTargets.sort((a, b) => b.x - a.x); let targetSlot = validTargets[0]; if (e.cd <= 0) { projectiles.push({ type: 'enemyProj', startX: e.x, startY: e.y - 30, tx: targetSlot.x, ty: targetSlot.y - 20, progress: 0, color: e.color, damage: e.damage }); e.cd = 50; } else { e.cd--; } }
                                     }
                                 }
-
                                 if (e.type !== 'boss' && e.type !== 'midboss') {
                                     let overlapSlots = fieldSlots.filter(fs => fs.char && fs.laneId === e.lane.id && Math.abs(e.x - fs.x) <= 65);
                                     if (overlapSlots.length > 0) {
                                         overlapSlots.sort((a, b) => b.x - a.x); let overlapSlot = overlapSlots[0];
                                         if (e.meleeCd <= 0) {
-                                            let fDamage = Math.max(1, e.damage - getBase('def', 0));
-                                            if (invincibleFrames > 0 || overlapSlot.char.id === 999) fDamage = 0;
-                                            overlapSlot.char.hp -= fDamage;
+                                            let fDamage = Math.max(1, e.damage - getBase('def', 0)); if (invincibleFrames > 0 || overlapSlot.char.id === 999) fDamage = 0; overlapSlot.char.hp -= fDamage;
                                             ctx.fillStyle = "rgba(200, 0, 0, 0.5)"; ctx.beginPath(); ctx.arc(overlapSlot.x, overlapSlot.y - 20, 30, 0, Math.PI * 2); ctx.fill();
                                             if (invincibleFrames > 0) createFloatingText(overlapSlot.x, overlapSlot.y - 40, "무적!", "gold", false);
-                                            if (overlapSlot.char.hp <= 0 && invincibleFrames <= 0) {
-                                                if (overlapSlot.char.id === 999 || overlapSlot.char.id > 100) { overlapSlot.char = null; } else { overlapSlot.char.state = 'dead'; overlapSlot.char.timer = getBase('respawnReduc', 250); overlapSlot.char.hp = getBase('hp', overlapSlot.char.maxHp); overlapSlot.char = null; }
-                                            }
+                                            if (overlapSlot.char.hp <= 0 && invincibleFrames <= 0) { if (overlapSlot.char.id === 999 || overlapSlot.char.id > 7) { overlapSlot.char = null; } else { overlapSlot.char.state = 'dead'; overlapSlot.char.timer = getBase('respawnReduc', 250); overlapSlot.char.hp = getBase('hp', overlapSlot.char.maxHp); overlapSlot.char = null; } }
                                             e.meleeCd = 25;
                                         } else { e.meleeCd--; }
                                     } else { e.meleeCd = 0; }
                                 } else if (e.type === 'boss') {
                                     if (e.cd <= 0) { let targets = fieldSlots.filter(fs => fs.char); if (targets.length > 0) { let t = targets[Math.floor(Math.random() * targets.length)]; projectiles.push({ type: 'enemyProj', startX: e.x, startY: e.y - 50, tx: t.x, ty: t.y - 20, progress: 0, color: '#c0392b', damage: e.damage + 10 }); } e.cd = 62; } else { e.cd--; }
                                     if (frameCount % 125 === 0) { const lane = lanes[Math.floor(Math.random() * lanes.length)]; enemies.push({ type: 'normal', x: e.x + 50, y: lane.y, lane: lane, hp: Math.floor(100 * stageMulti), maxHp: Math.floor(100 * stageMulti), slowTimer: 0, speed: 0.84, damage: Math.floor(5 * stageMulti), color: '#e67e22', range: 55, isRanged: false, cd: 0, meleeCd: 0, hitAnim: 0, poisoned: false, reward: 14 }); }
-                                    fieldSlots.forEach(s => { if (s.char && s.laneId === e.lane.id && Math.abs(e.x - s.x) < 100) { if (invincibleFrames <= 0 && s.char.id !== 999) s.char.hp -= 2; if (s.char.hp <= 0 && invincibleFrames <= 0) { if (s.char.id === 999 || s.char.id > 100) { s.char = null; } else { s.char.state = 'dead'; s.char.timer = getBase('respawnReduc', 250); s.char.hp = getBase('hp', s.char.maxHp); s.char = null; } } } });
+                                    fieldSlots.forEach(s => { if (s.char && s.laneId === e.lane.id && Math.abs(e.x - s.x) < 100) { if (invincibleFrames <= 0 && s.char.id !== 999) s.char.hp -= 2; if (s.char.hp <= 0 && invincibleFrames <= 0) { if (s.char.id === 999 || s.char.id > 7) { s.char = null; } else { s.char.state = 'dead'; s.char.timer = getBase('respawnReduc', 250); s.char.hp = getBase('hp', s.char.maxHp); s.char = null; } } } });
                                 }
                             }
 
-                            let enemyOffsetX = 0; if (e.hitAnim > 0) { enemyOffsetX = e.hitAnim * 3; e.hitAnim--; }
-
-                            if (e.type === 'boss') {
-                                ctx.fillStyle = timeStopFrames > 0 ? "#555" : "#8e44ad"; ctx.fillRect(e.x - 55 + enemyOffsetX, e.y - 130, 110, 130); ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(e.x - 20 + enemyOffsetX, e.y - 100, 12, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(e.x + 20 + enemyOffsetX, e.y - 100, 12, 0, Math.PI * 2); ctx.fill();
-                            } else if (e.type === 'midboss') {
-                                ctx.fillStyle = timeStopFrames > 0 ? "#555" : "#c0392b"; ctx.fillRect(e.x - 45 + enemyOffsetX, e.y - 100, 90, 100); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(e.x + enemyOffsetX, e.y - 80, 10, 0, Math.PI * 2); ctx.fill();
-                                ctx.fillStyle = "lime"; ctx.fillRect(e.x - 45 + enemyOffsetX, e.y - 110, 90 * (e.hp / e.maxHp), 6);
-                                drawText("도전자", e.x + enemyOffsetX, e.y - 125, 18, "red");
-                            } else {
-                                let ew = 55; let eh = 70;
-                                if (e.slowTimer > 0) { ctx.fillStyle = "rgba(0, 255, 255, 0.4)"; ctx.fillRect(e.x - (ew / 2) - 5 + enemyOffsetX, e.y - eh - 5, ew + 10, eh + 10); }
-                                ctx.fillStyle = timeStopFrames > 0 ? "#7f8c8d" : (e.poisoned ? "#8e44ad" : e.color); ctx.fillRect(e.x - (ew / 2) + enemyOffsetX, e.y - eh, ew, eh); ctx.fillStyle = "lime"; ctx.fillRect(e.x - (ew / 2) + enemyOffsetX, e.y - eh - 10, ew * (e.hp / e.maxHp), 5);
-                            }
+                            if (e.hitAnim > 0) e.hitAnim--;
+                            renderEntities.push({ y: e.y, type: 'enemy', data: e });
 
                             if (e.x <= e.lane.endX) {
                                 if (e.type === 'boss') baseEnergy = 0; else if (e.type === 'midboss') baseEnergy -= 30; else baseEnergy -= 10;
                                 enemies.splice(i, 1); shakeFrames = 8;
-                            }
-                            else if (e.hp <= 0) {
-                                let actualReward = Math.floor(e.reward * (1 + getBase('coinGain', 0)));
-                                battleCoins += actualReward;
-                                if (e.type === 'midboss' && e.metaReward) {
-                                    metaCoins += e.metaReward;
-                                    createFloatingText(e.x, e.y - 60, `+${e.metaReward}💎`, "#00d2d3", true);
-                                } else {
-                                    metaCoins += Math.floor(actualReward * 0.5);
-                                }
-                                updateUI();
-                                createFloatingText(e.x, e.y - 30, `+${actualReward}💰`, "#f1c40f", false);
-
-                                if (mercState === 'charging' && currentWave < 9) {
-                                    glitchGauge = Math.min(100, glitchGauge + (e.type === 'boss' ? 25 : (e.type === 'midboss' ? 20 : 10)));
-                                    updateMercUI();
-                                }
+                            } else if (e.hp <= 0) {
+                                let actualReward = Math.floor(e.reward * (1 + getBase('coinGain', 0))); battleCoins += actualReward;
+                                if (e.type === 'midboss' && e.metaReward) { metaCoins += e.metaReward; createFloatingText(e.x, e.y - 60, `+${e.metaReward}💎`, "#00d2d3", true); } else { metaCoins += Math.floor(actualReward * 0.5); }
+                                updateUI(); createFloatingText(e.x, e.y - 30, `+${actualReward}💰`, "#f1c40f", false);
+                                if (mercState === 'charging' && currentWave < 9) { glitchGauge = Math.min(100, glitchGauge + (e.type === 'boss' ? 25 : (e.type === 'midboss' ? 20 : 10))); updateMercUI(); }
                                 enemies.splice(i, 1);
                             }
-                        });
+                        }
 
-                        fieldSlots.forEach(s => {
-                            if (s.char) {
-                                let cdReduce = (s.char.id === 999 || s.char.id > 100) ? 0 : getBase('atkSpeed', 0);
-                                let actualMaxCd = Math.max(3, Math.floor(s.char.maxCd * (1 - cdReduce)));
-                                if (h0BuffTimer > 0) actualMaxCd = Math.max(2, Math.floor(actualMaxCd / 2));
-
-                                if (s.char.attackType === 'heal') {
-                                    if (s.char.cd <= 0) {
-                                        let targets = fieldSlots.filter(fs => fs.char && fs.char.hp < getBase('hp', fs.char.maxHp) && Math.hypot(fs.x - s.x, fs.y - s.y) <= s.char.range);
-                                        if (targets.length > 0) {
-                                            targets.sort((a, b) => a.char.hp - b.char.hp); let t = targets[0];
-                                            let distY = (t.y - 20) - (s.y - 30); let distX = t.x - s.x;
-                                            let T = 29; let g = 0.87; let vx = distX / T; let vy = (distY - 0.5 * g * T * T) / T;
-                                            let actualHeal = getBase('healInc', s.char.healAmount);
-                                            projectiles.push({ type: 'heal_parabola', x: s.x, y: s.y - 30, vx: vx, vy: vy, g: g, targetY: t.y - 20, color: s.char.color, target: t.char, heal: actualHeal });
-                                            s.char.cd = actualMaxCd;
-                                        }
-                                    } else { s.char.cd--; }
-                                    return;
+                        renderEntities.sort((a, b) => a.y - b.y);
+                        renderEntities.forEach(ent => {
+                            if (ent.type === 'char') {
+                                let s = ent.data;
+                                let renderOffsetX = 0; let renderOffsetY = 0; let renderRotate = 0; let scaleX = 1; let scaleY = 1;
+                                let currStrike = s.char.strikeAnim + 1;
+                                if (currStrike > 1 && currStrike <= 6) {
+                                    let progress = Math.sin((1 - currStrike / 6) * Math.PI);
+                                    renderOffsetX = progress * s.char.lungeDist * (s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1);
+                                    renderOffsetY = progress * s.char.lungeDist * (s.char.strikeDirY || 0);
+                                    renderRotate = progress * 0.05 * ((s.char.strikeDirX !== undefined ? s.char.strikeDirX : 1) > 0 ? 1 : -1);
+                                }
+                                let currJump = s.char.jumpAnim + 1;
+                                if (currJump > 1 && currJump <= 10) {
+                                    let progress = currJump / 10; let arc = Math.sin(progress * Math.PI);
+                                    renderOffsetY = -arc * 80;
+                                    if (currJump < 3) { scaleX = 1.3; scaleY = 0.7; } else if (currJump > 8) { scaleX = 0.8; scaleY = 1.2; }
                                 }
 
-                                let enemiesInRange = enemies.filter(e => {
-                                    if (s.char.attackType === 'melee' && s.char.role !== '탱커') return Math.hypot(e.x - s.x, e.y - s.y) <= s.char.range;
-                                    else if (s.char.id === 101) return Math.abs(e.lane.id - s.laneId) <= 1 && Math.abs(e.x - s.x) <= s.char.range;
-                                    else return e.lane.id === s.laneId && Math.abs(e.x - s.x) <= s.char.range;
-                                });
+                                ctx.save(); ctx.translate(s.x + renderOffsetX, s.y + renderOffsetY); ctx.rotate(renderRotate);
 
-                                if (enemiesInRange.length > 0) {
-                                    if (s.char.projType === 'beam' || s.char.projType === 'straight') {
-                                        enemiesInRange.sort((a, b) => a.x - b.x);
-                                    } else {
-                                        enemiesInRange.sort((a, b) => { let aB = a.x < s.x; let bB = b.x < s.x; if (aB && !bB) return -1; if (!aB && bB) return 1; return Math.abs(a.x - s.x) - Math.abs(b.x - s.x); });
-                                    }
+                                // [v13.10] 좌우 반전(Flip) 및 스케일 유지 보정
+                                let facingX = s.char.facingDir || 1;
+                                ctx.scale(scaleX * facingX, scaleY);
 
-                                    let target = enemiesInRange[0];
-                                    let dmgStat = s.char.attackType === 'melee' ? 'atkMelee' : 'atkRanged';
-                                    let finalBaseDmg = (s.char.id === 999 || s.char.id > 100) ? s.char.damage : getBase(dmgStat, s.char.damage);
-                                    let shootDir = target.x > s.x ? 1 : -1;
+                                if (invincibleFrames > 0 || s.char.id === 999) {
+                                    ctx.strokeStyle = "gold"; ctx.lineWidth = 3;
+                                    let defaultW = 100; let defaultH = 140;
+                                    ctx.strokeRect(- (defaultW / 2) - 5, -defaultH + 5, defaultW + 10, defaultH + 10);
+                                }
 
-                                    if (s.char.attackType === 'ranged') {
-                                        if (s.char.cd <= 0) {
-                                            let isMiss = s.char.projType !== 'pierce' && Math.random() > s.char.accuracy;
-                                            let isCrit = !isMiss && Math.random() < getBase('critRate', 0);
-                                            let targetX = target.x;
-                                            let targetY = target.y - 20;
+                                let cImg = getImage(s.char.id, 'ingame');
+                                // [v13.10] 원근 스케일 추가
+                                let laneScale = lanes[s.laneId].scale;
+                                let baseScale = (s.char.ingameScale || 1.0) * laneScale;
+                                let targetH = 250 * baseScale;
+                                let targetW = targetH * 0.2;
 
-                                            if (s.char.projType === 'pierce') {
-                                                targetX = s.x + (s.char.range * shootDir);
-                                                projectiles.push({ type: s.char.projType, startX: s.x, startY: s.y - 30, tx: targetX, ty: s.y - 30, progress: 0, char: s.char, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: s.laneId, hitTargets: [], color: s.char.color });
-                                            } else {
-                                                if (isMiss) { targetX += (Math.random() > 0.5 ? 1 : -1) * 150; targetY += (Math.random() > 0.5 ? 1 : -1) * 50; }
-                                                if (s.char.projType === 'parabola') {
-                                                    let distY = targetY - (s.y - 30); let distX = targetX - s.x;
-                                                    let T = (s.char.id === 101) ? 35 : 50; let g = (s.char.id === 101) ? 1.5 : 0.86;
-                                                    let predictedX = isMiss ? targetX : targetX - (target.speed * T * shootDir);
-                                                    let vx = (predictedX - s.x) / T; let vy = (distY - 0.5 * g * T * T) / T;
-                                                    projectiles.push({ type: 'parabola', x: s.x, y: s.y - 30, vx: vx, vy: vy, g: g, targetY: target.y - 20, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: target.lane.id });
-                                                } else {
-                                                    projectiles.push({ type: s.char.projType, startX: s.x, startY: s.y - 30, tx: targetX, ty: targetY, progress: 0, char: s.char, isMiss: isMiss, isCrit: isCrit, baseDmg: finalBaseDmg, laneId: s.laneId, shootDir: shootDir });
-                                                }
-                                            }
+                                if (cImg.complete && cImg.naturalWidth > 0) {
+                                    targetW = targetH * (cImg.naturalWidth / cImg.naturalHeight);
+                                    ctx.drawImage(cImg, -(targetW / 2), -targetH + 10, targetW, targetH);
+                                } else {
+                                    ctx.fillStyle = s.char.color; ctx.fillRect(-(targetW / 2), -targetH + 10, targetW, targetH);
+                                }
 
-                                            if (['straight', 'pierce', 'beam'].includes(s.char.projType) && s.char.id !== 999 && s.char.id < 100) {
-                                                let alliesInLine = fieldSlots.filter(fs => fs.char && fs.char !== s.char && fs.laneId === s.laneId && ((shootDir === 1 && fs.x > s.x && fs.x < targetX) || (shootDir === -1 && fs.x < s.x && fs.x > targetX)));
-                                                alliesInLine.forEach(fs => {
-                                                    let friendlyDmg = Math.max(1, Math.floor(finalBaseDmg * 0.2));
-                                                    if (invincibleFrames > 0) friendlyDmg = 0;
-                                                    fs.char.hp -= friendlyDmg;
-                                                    createFloatingText(fs.x, fs.y - 45, `-${friendlyDmg}`, "#ff0000", false);
-                                                    if (fs.char.hp <= 0 && invincibleFrames <= 0) {
-                                                        if (fs.char.id === 999 || fs.char.id > 100) { fs.char = null; }
-                                                        else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; }
-                                                    }
-                                                });
-                                            }
-                                            s.char.cd = actualMaxCd;
-                                        } else { s.char.cd--; }
-                                    } else if (s.char.attackType === 'melee') {
-                                        if (s.char.cd <= 0) {
-                                            let isCrit = Math.random() < getBase('critRate', 0);
-                                            let finalDmg = isCrit ? Math.floor(finalBaseDmg * getBase('critDmg', 0)) : finalBaseDmg;
+                                // 텍스트 및 HP 바 렌더링 시에는 좌우 반전을 다시 원복
+                                ctx.scale(facingX, 1);
 
-                                            if (s.char.role.includes('근거리') || s.char.role.includes('엘리트')) {
-                                                s.char.strikeAnim = 6;
-                                                let dist = Math.hypot(target.x - s.x, target.y - s.y);
-                                                s.char.strikeDirX = dist > 0 ? (target.x - s.x) / dist : shootDir;
-                                                s.char.strikeDirY = dist > 0 ? (target.y - s.y) / dist : 0;
-                                                s.char.lungeDist = Math.min(s.char.range, Math.max(0, dist - 40));
-                                                target.hp -= finalDmg; target.hitAnim = 4;
-                                                applyLifesteal(s.char, finalDmg);
-                                                createFloatingText(target.x, target.y - 50, Math.floor(finalDmg), isCrit ? "#ff3333" : "white", isCrit);
-                                                if (isCrit) shakeFrames = 3;
-                                            }
-                                            if (s.char.role === '탱커') { s.char.jumpAnim = 10; s.char.pendingStrike = { target: target, dmg: finalDmg, isCrit: isCrit }; }
+                                // [v13.10] 커스텀 폰트 오프셋 반영
+                                drawText(s.char.name, 0, -targetH - 10 + (s.char.fontOffsetY || 0), 22 * laneScale, "#fff");
+                                let curMaxHp = (s.char.id === 999) ? s.char.maxHp : getBase('hp', s.char.maxHp);
+                                // targetW(가변폭) 대신 60(고정폭)을 사용하고 두께도 6으로 고정
+                                let gaugeFixedWidth = 60;
+                                ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // 배경바 추가 (시인성 확보)
+                                ctx.fillRect(-(gaugeFixedWidth / 2), 15, gaugeFixedWidth, 6);
+                                ctx.fillStyle = "lime"; // 실제 체력바
+                                ctx.fillRect(-(gaugeFixedWidth / 2), 15, gaugeFixedWidth * (s.char.hp / curMaxHp), 6); ctx.restore();
 
-                                            s.char.cd = actualMaxCd;
-                                            ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.beginPath(); ctx.arc(target.x, target.y - 20, 20, 0, Math.PI * 2); ctx.fill();
-                                        } else { s.char.cd--; }
-                                    }
-                                } else if (s.char.cd > 0) { s.char.cd--; }
+                                let currRangeTimer = s.char.showRangeTimer + 1;
+                                if (currRangeTimer > 1) {
+                                    let fillColor = s.char.attackType === 'heal' ? "rgba(46, 204, 113, 0.15)" : "rgba(231, 76, 60, 0.15)";
+                                    ctx.fillStyle = fillColor;
+                                    if (s.char.id === 11) { ctx.fillRect(s.x - s.char.range, s.y - rowHeight - 35, s.char.range * 2, (rowHeight * 2) + 70); }
+                                    else if (s.char.attackType === 'heal' || (s.char.attackType === 'melee' && s.char.role !== '탱커')) { ctx.beginPath(); ctx.arc(s.x, s.y, s.char.range, 0, Math.PI * 2); ctx.fill(); }
+                                    else { ctx.fillRect(s.x - s.char.range, s.y - 35, s.char.range * 2, 70); }
+                                }
+                            } else {
+                                let e = ent.data;
+                                let currHit = e.hitAnim + 1;
+                                let enemyOffsetX = 0; if (currHit > 1 && currHit <= 6) { enemyOffsetX = currHit * 3; }
+
+                                if (e.type === 'boss') {
+                                    ctx.fillStyle = timeStopFrames > 0 ? "#555" : "#8e44ad";
+                                    ctx.fillRect(e.x - 70 + enemyOffsetX, e.y - 160, 140, 160);
+                                    ctx.fillStyle = "red";
+                                    ctx.beginPath(); ctx.arc(e.x - 25 + enemyOffsetX, e.y - 120, 15, 0, Math.PI * 2); ctx.fill();
+                                    ctx.beginPath(); ctx.arc(e.x + 25 + enemyOffsetX, e.y - 120, 15, 0, Math.PI * 2); ctx.fill();
+
+                                    const barW = 200; const barH = 12; const barY = e.y - 185;
+                                    ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(e.x - (barW / 2) + enemyOffsetX, barY, barW, barH);
+                                    ctx.fillStyle = "#c0392b"; ctx.fillRect(e.x - (barW / 2) + enemyOffsetX, barY, barW * (e.hp / e.maxHp), barH);
+                                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 2; ctx.strokeRect(e.x - (barW / 2) + enemyOffsetX, barY, barW, barH);
+                                    drawText("기계 마신왕", e.x + enemyOffsetX, barY - 25, 28, "#f1c40f");
+                                }
+                                else if (e.type === 'midboss') {
+                                    ctx.fillStyle = timeStopFrames > 0 ? "#555" : "#c0392b";
+                                    ctx.fillRect(e.x - 55 + enemyOffsetX, e.y - 120, 110, 120);
+                                    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(e.x + enemyOffsetX, e.y - 100, 12, 0, Math.PI * 2); ctx.fill();
+                                    ctx.fillStyle = "lime"; ctx.fillRect(e.x - 55 + enemyOffsetX, e.y - 130, 110 * (e.hp / e.maxHp), 8);
+                                    drawText("도전자", e.x + enemyOffsetX, e.y - 145, 22, "red");
+                                }
+                                else {
+                                    let ew = 75; let eh = 95;
+                                    if (e.slowTimer > 0) { ctx.fillStyle = "rgba(0, 255, 255, 0.4)"; ctx.fillRect(e.x - (ew / 2) - 5 + enemyOffsetX, e.y - eh - 5, ew + 10, eh + 10); }
+                                    ctx.fillStyle = timeStopFrames > 0 ? "#7f8c8d" : (e.poisoned ? "#8e44ad" : e.color);
+                                    ctx.fillRect(e.x - (ew / 2) + enemyOffsetX, e.y - eh, ew, eh);
+                                    ctx.fillStyle = "lime"; ctx.fillRect(e.x - (ew / 2) + enemyOffsetX, e.y - eh - 12, ew * (e.hp / e.maxHp), 6);
+                                }
                             }
                         });
 
                         for (let i = projectiles.length - 1; i >= 0; i--) {
                             let p = projectiles[i]; let isHit = false;
-
-                            if (p.type === 'midbossProj') {
-                                p.x += p.vx; p.y += p.vy; p.vy += p.g;
-                                if (p.vy > 0 && p.y >= p.targetY) {
-                                    isHit = true; p.tx = p.x; p.ty = p.targetY;
-                                    let explosionRadius = 120;
-                                    fieldSlots.forEach(fs => {
-                                        if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) {
-                                            let dmg = p.damage;
-                                            if (invincibleFrames > 0 || fs.char.id === 999) dmg = 0;
-                                            fs.char.hp -= dmg;
-                                            createFloatingText(fs.x, fs.y - 30, `-${dmg}`, "#e74c3c", true);
-                                            if (fs.char.hp <= 0 && invincibleFrames <= 0) {
-                                                if (fs.char.id > 100) fs.char = null;
-                                                else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; }
-                                            }
-                                        }
-                                    });
-                                    ctx.fillStyle = "rgba(142, 68, 173, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill();
-                                }
-                            }
+                            if (p.type === 'midbossProj') { p.x += p.vx; p.y += p.vy; p.vy += p.g; if (p.vy > 0 && p.y >= p.targetY) { isHit = true; p.tx = p.x; p.ty = p.targetY; let explosionRadius = 120; fieldSlots.forEach(fs => { if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) { let dmg = p.damage; if (invincibleFrames > 0 || fs.char.id === 999) dmg = 0; fs.char.hp -= dmg; createFloatingText(fs.x, fs.y - 30, `-${dmg}`, "#e74c3c", true); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id > 7) fs.char = null; else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } } }); ctx.fillStyle = "rgba(142, 68, 173, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill(); } }
                             else if (p.type === 'parabola' || p.type === 'heal_parabola') { p.x += p.vx; p.y += p.vy; p.vy += p.g; if (p.vy > 0 && p.y >= p.targetY) { isHit = true; p.tx = p.x; p.ty = p.targetY; } }
                             else if (p.type === 'pierce') { p.progress += 0.035; p.x = p.startX + (p.tx - p.startX) * p.progress; p.y = p.startY + (p.ty - p.startY) * p.progress; if (p.progress >= 1) isHit = true; let enemiesInLane = enemies.filter(e => e.lane.id === p.laneId); enemiesInLane.forEach(e => { if (!p.hitTargets.includes(e) && Math.abs(e.x - p.x) < 50) { p.hitTargets.push(e); let reduction = Math.pow(0.7, p.hitTargets.length - 1); let currentDmg = Math.max(1, Math.floor(p.baseDmg * reduction)); let finalDmg = p.isCrit ? Math.floor(currentDmg * getBase('critDmg', 0)) : currentDmg; e.hp -= finalDmg; e.hitAnim = 6; applyLifesteal(p.char, finalDmg); createFloatingText(e.x, e.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); if (p.isCrit) shakeFrames = 3; } }); }
-                            else {
-                                if (p.char && p.char.projType === 'beam') {
-                                    p.progress += 0.06; p.x = p.startX + (p.tx - p.startX) * p.progress; p.y = p.startY;
-                                    if (p.progress >= 1) { isHit = true; p.tx = p.x; p.ty = p.y; }
-                                } else {
-                                    p.progress += 0.084; p.x = p.startX + (p.tx - p.startX) * p.progress; p.y = p.startY + (p.ty - p.startY) * p.progress;
-                                    if (p.progress >= 1) { isHit = true; p.tx = p.x; p.ty = p.y; }
-                                }
-                            }
-
+                            else { if (p.char && p.char.projType === 'beam') { p.progress += 0.06; p.x = p.startX + (p.tx - p.startX) * p.progress; p.y = p.startY; if (p.progress >= 1) { isHit = true; p.tx = p.x; p.ty = p.y; } } else { p.progress += 0.084; p.x = p.startX + (p.tx - p.startX) * p.progress; p.y = p.startY + (p.ty - p.startY) * p.progress; if (p.progress >= 1) { isHit = true; p.tx = p.x; p.ty = p.y; } } }
                             ctx.save(); ctx.fillStyle = p.color || (p.char ? p.char.color : 'red');
                             if (p.type === 'heal_parabola') { ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x - 8, p.y); ctx.lineTo(p.x + 8, p.y); ctx.moveTo(p.x, p.y - 8); ctx.lineTo(p.x, p.y + 8); ctx.stroke(); }
                             else if (p.type === 'midbossProj') { ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke(); }
                             else if (p.type === 'pierce') { ctx.translate(p.x, p.y); ctx.rotate(frameCount * 0.4); ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(20, 0); ctx.lineTo(0, 20); ctx.lineTo(-20, 0); ctx.closePath(); ctx.fill(); }
-                            else if (p.char && p.char.projType === 'beam') {
-                                ctx.translate(p.x, p.y); ctx.fillStyle = p.char.color;
-                                ctx.beginPath(); ctx.ellipse(0, 0, 45, 8, 0, 0, Math.PI * 2); ctx.fill();
-                            }
+                            else if (p.char && p.char.projType === 'beam') { ctx.translate(p.x, p.y); ctx.fillStyle = p.char.color; ctx.beginPath(); ctx.ellipse(0, 0, 45, 8, 0, 0, Math.PI * 2); ctx.fill(); }
                             else { ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.fill(); } ctx.restore();
 
                             if (isHit && p.type !== 'midbossProj') {
                                 if (p.type === 'heal_parabola') { if (p.target.state === 'deployed') { p.target.hp = Math.min(getBase('hp', p.target.maxHp), p.target.hp + p.heal); createFloatingText(p.tx, p.ty - 20, `+${Math.floor(p.heal)}`, "#2ecc71", true); } }
-                                else if (p.type === 'enemyProj') { let hitSlots = fieldSlots.filter(fs => fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < 60); if (hitSlots.length > 0) { hitSlots.sort((a, b) => b.x - a.x); let hitSlot = hitSlots[0]; let fHit = Math.max(1, p.damage - getBase('def', 0)); if (invincibleFrames > 0 || hitSlot.char.id === 999) fHit = 0; hitSlot.char.hp -= fHit; createFloatingText(hitSlot.x, hitSlot.y - 30, `-${fHit}`, "#e74c3c", true); if (invincibleFrames > 0) createFloatingText(hitSlot.x, hitSlot.y - 40, "무적!", "gold", false); if (hitSlot.char.hp <= 0 && invincibleFrames <= 0) { if (hitSlot.char.id === 999 || hitSlot.char.id > 100) { hitSlot.char = null; } else { hitSlot.char.state = 'dead'; hitSlot.char.timer = getBase('respawnReduc', 250); hitSlot.char.hp = getBase('hp', hitSlot.char.maxHp); hitSlot.char = null; } } } }
+                                else if (p.type === 'enemyProj') { let hitSlots = fieldSlots.filter(fs => fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < 60); if (hitSlots.length > 0) { hitSlots.sort((a, b) => b.x - a.x); let hitSlot = hitSlots[0]; let fHit = Math.max(1, p.damage - getBase('def', 0)); if (invincibleFrames > 0 || hitSlot.char.id === 999) fHit = 0; hitSlot.char.hp -= fHit; createFloatingText(hitSlot.x, hitSlot.y - 30, `-${fHit}`, "#e74c3c", true); if (invincibleFrames > 0) createFloatingText(hitSlot.x, hitSlot.y - 40, "무적!", "gold", false); if (hitSlot.char.hp <= 0 && invincibleFrames <= 0) { if (hitSlot.char.id === 999 || hitSlot.char.id > 7) { hitSlot.char = null; } else { hitSlot.char.state = 'dead'; hitSlot.char.timer = getBase('respawnReduc', 250); hitSlot.char.hp = getBase('hp', hitSlot.char.maxHp); hitSlot.char = null; } } } }
                                 else if (p.type !== 'pierce') {
                                     if (p.isMiss) { ctx.fillStyle = "rgba(100, 100, 100, 0.5)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, 40, 0, Math.PI * 2); ctx.fill(); createFloatingText(p.tx, p.ty, "Miss", "#aaa", false); }
                                     else {
@@ -2583,83 +2043,100 @@
                                         if (p.char.aoe) {
                                             let explosionRadius = p.char.aoeRadius || 180;
                                             enemies.forEach(e => { if (Math.hypot(e.x - p.tx, e.y - p.ty) < explosionRadius) { e.hp -= finalDmg; e.hitAnim = 6; applyLifesteal(p.char, finalDmg); if (p.char.poison) e.poisoned = true; createFloatingText(e.x, e.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); } });
-                                            if (p.char.friendlyFire) { fieldSlots.forEach(fs => { if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) { let friendlyDmg = Math.floor(finalDmg * 0.2); if (invincibleFrames > 0 || fs.char.id === 999) friendlyDmg = 0; fs.char.hp -= friendlyDmg; createFloatingText(fs.x, fs.y - 50, `-${friendlyDmg}`, "#ff0000", false); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id === 999 || fs.char.id > 100) { fs.char = null; } else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } } }); } ctx.fillStyle = "rgba(231, 76, 60, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill();
+                                            if (p.char.friendlyFire) { fieldSlots.forEach(fs => { if (fs.char && Math.hypot(fs.x - p.tx, fs.y - p.ty) < explosionRadius) { let friendlyDmg = Math.floor(finalDmg * 0.2); if (invincibleFrames > 0 || fs.char.id === 999) friendlyDmg = 0; fs.char.hp -= friendlyDmg; createFloatingText(fs.x, fs.y - 50, `-${friendlyDmg}`, "#ff0000", false); if (fs.char.hp <= 0 && invincibleFrames <= 0) { if (fs.char.id === 999 || fs.char.id > 7) { fs.char = null; } else { fs.char.state = 'dead'; fs.char.timer = getBase('respawnReduc', 250); fs.char.hp = getBase('hp', fs.char.maxHp); fs.char = null; } } } }); } ctx.fillStyle = "rgba(231, 76, 60, 0.6)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, explosionRadius, 0, Math.PI * 2); ctx.fill();
                                         } else { let hitEnemy = null; let enemiesInLane = enemies.filter(e => e.lane.id === p.laneId); if (enemiesInLane.length > 0) { enemiesInLane.sort((a, b) => Math.abs(a.x - p.tx) - Math.abs(b.x - p.tx)); hitEnemy = enemiesInLane[0]; } if (hitEnemy) { hitEnemy.hp -= finalDmg; hitEnemy.hitAnim = 6; applyLifesteal(p.char, finalDmg); if (p.char.poison) hitEnemy.poisoned = true; if (p.char.slow && hitEnemy.type !== 'boss' && hitEnemy.type !== 'midboss') hitEnemy.slowTimer = 75; createFloatingText(hitEnemy.x, hitEnemy.y - 30, Math.floor(finalDmg), p.isCrit ? "#ff3333" : "white", p.isCrit); } }
                                     }
                                 }
                                 projectiles.splice(i, 1);
-                            } else if (isHit && p.type === 'midbossProj') {
-                                projectiles.splice(i, 1);
-                            }
+                            } else if (isHit && p.type === 'midbossProj') { projectiles.splice(i, 1); }
                         }
 
                         for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y -= 3; ft.life--; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife); drawText(ft.isCrit ? `CRIT! ${ft.text}` : ft.text, ft.x, ft.y, ft.size, ft.color); ctx.globalAlpha = 1.0; if (ft.life <= 0) floatingTexts.splice(i, 1); }
 
-                        // UI 렌더링 (하단 슬롯)
                         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 880, W, 200); ctx.strokeStyle = "#555"; ctx.lineWidth = 4; ctx.strokeRect(0, 880, W, 200);
+                        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(20, 900, 210, 160); ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3; ctx.strokeRect(20, 900, 210, 160);
+                        drawText(`[ 관문 ${currentStage}/10 ]`, 125, 935, 26, "#2ecc71"); let remainSec = Math.ceil(waveTimer / 60); let waveStr = currentWave === 9 ? "보스전" : `Wave ${currentWave + 1} (${remainSec})`; drawText(waveStr, 125, 985, 26, "#3498db"); drawText(`HP: ${baseEnergy}% 危`, 125, 1030, 26, "#ff4757");
 
-                        ctx.fillStyle = "rgba(0,0,0,0.8)";
-                        ctx.fillRect(20, 900, 280, 160);
-                        ctx.strokeStyle = "#f1c40f";
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(20, 900, 280, 160);
-                        drawText(`[ 관문 ${currentStage}/10 ]`, 160, 935, 26, "#2ecc71");
-                        let remainSec = Math.ceil(waveTimer / 60);
-                        let waveStr = currentWave === 9 ? "웨이브 10/10 (보스전)" : `웨이브 ${currentWave + 1}/10 (${remainSec}초)`;
-                        drawText(waveStr, 160, 985, 24, "#3498db");
-                        drawText(`에너지: ${baseEnergy}% 危`, 160, 1030, 26, "#ff4757");
-
-                        // [교체] 확장된 유닛 슬롯 렌더링 (Y축 900으로 정렬)
-                        const slotWidth = 155;
-                        const deckStartX = 350;
-                        const slotY = 900;
+                        const slotWidth = 150;
+                        const deckStartX = 280;
+                        const slotY = 885;
 
                         deck.forEach((char, i) => {
-                            const bx = deckStartX + (i * slotWidth);
-                            ctx.strokeStyle = (selectedInvenIdx === i) ? "gold" : "#333";
-                            ctx.lineWidth = 4;
-                            ctx.strokeRect(bx, slotY, slotWidth, 160);
+                            const bx = deckStartX + (i * (slotWidth + 10));
+                            const isSelected = (selectedInvenIdx === i);
 
-                            let slotInnerW = slotWidth - 10;
+                            let innerMargin = 6;
+                            let slotInnerW = slotWidth - (innerMargin * 2);
+                            let squareH = slotInnerW;
+
+                            ctx.strokeStyle = isSelected ? "gold" : "#333";
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(bx, slotY, slotWidth, 185);
+
                             let actualCost = getActualCost(char);
 
+                            ctx.save();
+                            let img = getImage(char.id, 'char');
                             if (char.state === 'deployed') {
                                 ctx.fillStyle = "#111";
-                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
-                                drawText("배치됨", bx + (slotWidth / 2), slotY + 55, 24, "#555");
-                            } else if (char.state === 'waiting' || char.state === 'dead') {
-                                char.timer--; if (char.timer <= 0) char.state = 'ready';
-                                ctx.fillStyle = char.color;
-                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
+                                ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                drawText("배치됨", bx + (slotWidth / 2), slotY + innerMargin + (squareH / 2), 24, "#555");
+                            }
+                            else if (char.state === 'waiting' || char.state === 'dead') {
+                                char.timer--;
+                                if (char.timer <= 0) char.state = 'ready';
+                                if (img.complete && img.naturalWidth > 0) {
+                                    ctx.drawImage(img, bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                } else {
+                                    ctx.fillStyle = char.color; ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                }
                                 let maxT = char.state === 'dead' ? getBase('respawnReduc', 250) : 125;
                                 ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110 * (char.timer / maxT));
-                                drawText(char.state === 'dead' ? "운기조식" : "대기중", bx + (slotWidth / 2), slotY + 55, 22, "#ff4757");
-                            } else {
-                                ctx.fillStyle = char.color;
-                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 110);
-                                ctx.fillStyle = "rgba(0,0,0,0.6)";
-                                ctx.fillRect(bx + 5, slotY + 2, slotInnerW, 35);
-                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), slotY + 20, 22, battleCoins >= actualCost ? "#f1c40f" : "#e74c3c");
+                                ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, squareH * (char.timer / maxT));
+                                drawText(char.state === 'dead' ? "운기" : "대기", bx + (slotWidth / 2), slotY + innerMargin + (squareH / 2), 24, "#ff4757");
                             }
-                            drawText(char.name, bx + (slotWidth / 2), slotY + 125, 22, (char.state === 'ready') ? "white" : "#7f8c8d");
-                            drawText(`[${char.role}]`, bx + (slotWidth / 2), slotY + 148, 16, (char.state === 'ready') ? "#f1c40f" : "#7f8c8d");
+                            else {
+                                if (img.complete && img.naturalWidth > 0) {
+                                    ctx.drawImage(img, bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                } else {
+                                    ctx.fillStyle = char.color; ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                }
+
+                                if (isSelected) {
+                                    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+                                    ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, squareH);
+                                }
+
+                                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                                ctx.fillRect(bx + innerMargin, slotY + innerMargin, slotInnerW, 35);
+                                drawText(`💰 ${actualCost}`, bx + (slotWidth / 2), slotY + innerMargin + 18, 22, battleCoins >= actualCost ? "#f1c40f" : "#ff4757");
+                            }
+                            ctx.restore();
+
+                            drawText(char.name, bx + (slotWidth / 2), slotY + squareH + 22, 24, (char.state === 'ready') ? "white" : "#555");
+                            drawText(`[${char.role}]`, bx + (slotWidth / 2), slotY + squareH + 45, 18, (char.state === 'ready') ? "#f1c40f" : "#444");
                         });
 
                         ctx.strokeStyle = "#555"; ctx.lineWidth = 3; ctx.strokeRect(heroSlot.x, heroSlot.y, heroSlot.w, heroSlot.h);
                         let activeHeroObj = heroes.find(h => h.id === equippedHero);
-                        ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 30, 100, 100);
-                        drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 45, 32, "white");
+
+                        let hImg = getImage(activeHeroObj.id, 'hero');
+                        if (hImg.complete && hImg.naturalWidth > 0) {
+                            ctx.drawImage(hImg, heroSlot.x + 20, heroSlot.y + 40, 100, 100);
+                            ctx.strokeStyle = activeHeroObj.color; ctx.lineWidth = 2; ctx.strokeRect(heroSlot.x + 20, heroSlot.y + 40, 100, 100);
+                        } else {
+                            ctx.fillStyle = activeHeroObj.color; ctx.fillRect(heroSlot.x + 20, heroSlot.y + 40, 100, 100);
+                        }
+
+                        drawText(activeHeroObj.name, heroSlot.x + 270, heroSlot.y + 55, 36, "white");
 
                         if (heroSlot.cd > 0 || heroSlot.activeTimer > 0) {
                             let ratio = heroSlot.activeTimer > 0 ? (heroSlot.activeTimer / heroSlot.maxActive) : (1 - heroSlot.cd / heroSlot.maxCd);
-                            ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250 * ratio, 15);
-                            drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 270, heroSlot.y + 80, 26, "#aaa");
+                            ctx.fillStyle = heroSlot.activeTimer > 0 ? "red" : "yellow"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 120, 250 * ratio, 15);
+                            drawText(heroSlot.activeTimer > 0 ? "심판의 일격!!" : "내공 축적 중...", heroSlot.x + 270, heroSlot.y + 90, 28, "#aaa");
                             if (heroSlot.cd > 0 && heroSlot.activeTimer <= 0) heroSlot.cd--;
-                        }
-                        else {
-                            ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 110, 250, 15);
-                            drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 80, 30, "red");
+                        } else {
+                            ctx.fillStyle = "lime"; ctx.fillRect(heroSlot.x + 140, heroSlot.y + 120, 250, 15); drawText("발동! (터치)", heroSlot.x + 270, heroSlot.y + 90, 32, "red");
                         }
 
                         if (heroSlot.activeTimer > 0) { ctx.fillStyle = "rgba(142, 68, 173, 0.25)"; ctx.fillRect(0, 0, W, H); drawText(`${activeHeroObj.name} 강림!!`, W / 2, H / 2, 120, activeHeroObj.color); heroSlot.activeTimer--; }
@@ -2669,28 +2146,21 @@
                         if (timeStopFrames > 0) timeStopFrames--; if (invincibleFrames > 0) invincibleFrames--; frameCount++;
                     }
                     else if (gameState === 'gameover') {
-                        ctx.fillStyle = "#000000";
-                        ctx.fillRect(0, 0, W, H);
+                        ctx.fillStyle = "#000000"; ctx.fillRect(0, 0, W, H);
                         drawText(`패배: 제 ${currentStage} 관문에서 쓰러졌소...`, W / 2, H / 2 - 120, 70, "#ff4757");
                         drawText("危", W / 2, H / 2 - 270, 150, "rgba(255, 71, 87, 0.8)");
-
                         let bonusMeta = Math.floor(battleCoins * 0.1);
-                        drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 24, "#bdc3c7");
-                        drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 30, 28, "#00d2d3");
-
-                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 90, 360, 90);
-                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 135, 40, "white");
+                        drawText(`남은 전투 코인 ${battleCoins}의 10%가 전환되어`, W / 2, H / 2 - 10, 30, "#bdc3c7");
+                        drawText(`천기 영석 ${bonusMeta}개를 획득하였소!`, W / 2, H / 2 + 35, 34, "#00d2d3");
+                        ctx.fillStyle = "#c0392b"; ctx.fillRect(W / 2 - 180, H / 2 + 100, 360, 90); ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 4; ctx.strokeRect(W / 2 - 180, H / 2 + 100, 360, 90);
+                        drawText("🔙 타이틀로 귀환", W / 2, H / 2 + 145, 40, "white");
                     }
-
                     ctx.restore();
                 }
             }
         }
 
-        loadGame();
-        showScreen('titleScreen');
-        requestAnimationFrame(gameLoop);
+        loadGame(); showScreen('titleScreen'); requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>

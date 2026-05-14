@@ -645,6 +645,7 @@
             cursor: pointer;
             transition: 0.3s;
             box-shadow: 0 10px 20px rgba(192,57,43,0.5);
+            pointer-events: auto !important;
         }
 
             .btn-large:hover {
@@ -1144,6 +1145,12 @@
         <div id="titleScreen" class="screen">
             <h1>[강철의 난: 무림수호맹]</h1>
             <button class="btn-large" onclick="showScreen('heroSelectScreen')">게임 시작</button>
+
+            <button class="btn-large"
+                    onclick="showScreen('heroSelectScreen')"
+                    ontouchstart="showScreen('heroSelectScreen')">
+                게임 시작
+            </button>
         </div>
 
         <div id="heroSelectScreen" class="screen">
